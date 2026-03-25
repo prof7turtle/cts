@@ -27,13 +27,22 @@ async function executeGraphQL(query: string, variables?: Record<string, any>) {
     throw new Error(`GraphQL request failed: ${response.statusText}`);
   }
 
-  const data = await response.json();
+  const raw = await response.json();
 
-  if (data.errors) {
-    throw new Error(data.errors[0].message);
+  // Apollo Server v4 executeOperation wraps the payload under body.singleResult
+  const singleResult = raw?.body?.singleResult;
+  const resultData = raw?.data ?? singleResult?.data;
+  const resultErrors = raw?.errors ?? singleResult?.errors;
+
+  if (resultErrors?.length) {
+    throw new Error(resultErrors[0]?.message || 'GraphQL request returned errors');
   }
 
-  return data;
+  if (!resultData) {
+    throw new Error('GraphQL response missing data');
+  }
+
+  return { data: resultData };
 }
 
 // ============ Workflow Queries ============
