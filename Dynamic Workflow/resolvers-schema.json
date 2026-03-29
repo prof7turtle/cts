@@ -1,0 +1,1069 @@
+{
+  "resolvers": {
+    "Query": {
+      "authenticateUser": {
+        "resolver": "AuthenticationResolver",
+        "file": "src/AuthenticationResolver.js",
+        "description": "Authenticate a user with SSO credentials",
+        "inputType": "SSOinput",
+        "outputType": "UserDetails",
+        "parameters": {
+          "client": "string",
+          "userName": "string",
+          "password": "string",
+          "siteId": "string",
+          "productId": "string"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "loadMasters": {
+        "resolver": "MasterDataResolvers",
+        "file": "src/MasterDataResolvers.js",
+        "description": "Load master data tables based on client, table name, and role",
+        "inputType": "inpLoadMasters",
+        "outputType": "[MasterData]",
+        "parameters": {
+          "Client": "string",
+          "Table": "string",
+          "Role": "string"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "fetchCoverageOption": {
+        "resolver": "MasterDataResolvers",
+        "file": "src/MasterDataResolvers.js",
+        "description": "Fetch coverage options based on LOB, implementation, version, state, element, and role",
+        "inputType": "inpfetchCoverageOption",
+        "outputType": "[CoverageOptionRules]",
+        "parameters": {
+          "lob": "string",
+          "implementation": "string",
+          "version": "string",
+          "State": "string",
+          "elementName": "string",
+          "Role": "string"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "getByPagination": {
+        "resolver": "PolicyCRUDResolvers",
+        "file": "src/PolicyCrudResolvers.js",
+        "description": "Get policies with pagination support based on filters",
+        "inputType": "filters",
+        "outputType": "FilterResponse",
+        "parameters": {
+          "input": "filters object"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "getComparativeRater": {
+        "resolver": "PolicyCRUDResolvers",
+        "file": "src/PolicyCrudResolvers.js",
+        "description": "Get comparative rating information for policies",
+        "inputType": "filters",
+        "outputType": "[ComparativePolicy]",
+        "parameters": {
+          "input": "filters object"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "getAll": {
+        "resolver": "PolicyCRUDResolvers",
+        "file": "src/PolicyCrudResolvers.js",
+        "description": "Retrieve all policies",
+        "inputType": null,
+        "outputType": "[Policy]",
+        "parameters": {},
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "getAnalytics": {
+        "resolver": "PolicyCRUDResolvers",
+        "file": "src/PolicyCrudResolvers.js",
+        "description": "Get analytics data for provided queries",
+        "inputType": "[String]",
+        "outputType": "[AnalyticsProperties]",
+        "parameters": {
+          "queryProvided": "array of strings"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "getById": {
+        "resolver": "PolicyCRUDResolvers",
+        "file": "src/PolicyCrudResolvers.js",
+        "description": "Get a policy by ID",
+        "inputType": "ID!",
+        "outputType": "[Policy]",
+        "parameters": {
+          "id": "string (required)"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "getByQuery": {
+        "resolver": "PolicyCRUDResolvers",
+        "file": "src/PolicyCrudResolvers.js",
+        "description": "Get policies by custom query specification",
+        "inputType": "String",
+        "outputType": "[Policy]",
+        "parameters": {
+          "querySpec": "string"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "queryByContainer": {
+        "resolver": "PolicyCRUDResolvers",
+        "file": "src/PolicyCrudResolvers.js",
+        "description": "Get policies by container/client name",
+        "inputType": "String",
+        "outputType": "[Policy]",
+        "parameters": {
+          "client": "string"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "getQueryByArg": {
+        "resolver": "PolicyCRUDResolvers",
+        "file": "src/PolicyCrudResolvers.js",
+        "description": "Get policies by argument query",
+        "inputType": "inpPolicy",
+        "outputType": "[Policy]",
+        "parameters": {
+          "input": "inpPolicy object"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "getTemplate": {
+        "resolver": "PolicyCRUDResolvers",
+        "file": "src/PolicyCrudResolvers.js",
+        "description": "Get template by carrier, LOB, and agency",
+        "inputType": "String, String, String",
+        "outputType": "[Templates]",
+        "parameters": {
+          "Carrier": "string",
+          "LOB": "string",
+          "AgencyId": "string"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "getByFilter": {
+        "resolver": "PolicyCRUDResolvers",
+        "file": "src/PolicyCrudResolvers.js",
+        "description": "Get policies by filter criteria",
+        "inputType": "filters",
+        "outputType": "[Policy]",
+        "parameters": {
+          "input": "filters object"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "getUserDetails": {
+        "resolver": "PolicyCRUDResolvers",
+        "file": "src/PolicyCrudResolvers.js",
+        "description": "Get user details by client and user type",
+        "inputType": "String, String",
+        "outputType": "[UserDetails]",
+        "parameters": {
+          "client": "string",
+          "userType": "string"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "postToNotificationAPI": {
+        "resolver": "PolicyCRUDResolvers",
+        "file": "src/PolicyCrudResolvers.js",
+        "description": "Post notification event to notification API",
+        "inputType": "inpQueryNotification",
+        "outputType": "Boolean",
+        "parameters": {
+          "input": "notification object"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "getContracts": {
+        "resolver": "PolicyCRUDResolvers",
+        "file": "src/PolicyCrudResolvers.js",
+        "description": "Get contracts by client",
+        "inputType": "String",
+        "outputType": "[Contract]",
+        "parameters": {
+          "client": "string"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "getHashing": {
+        "resolver": "Not found in resolver files",
+        "file": null,
+        "description": "Get hashing value",
+        "inputType": null,
+        "outputType": "String",
+        "parameters": {},
+        "externalDependency": null,
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "getAgents": {
+        "resolver": "PolicyCRUDResolvers",
+        "file": "src/PolicyCrudResolvers.js",
+        "description": "Get agents by client and LOB",
+        "inputType": "String, String",
+        "outputType": "[UserDetails]",
+        "parameters": {
+          "client": "string",
+          "lob": "string"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "getAgencies": {
+        "resolver": "PolicyCRUDResolvers",
+        "file": "src/PolicyCrudResolvers.js",
+        "description": "Get agencies by client and LOB",
+        "inputType": "String, String",
+        "outputType": "[UserDetails]",
+        "parameters": {
+          "client": "string",
+          "lob": "string"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "getUnderwriters": {
+        "resolver": "PolicyCRUDResolvers",
+        "file": "src/PolicyCrudResolvers.js",
+        "description": "Get underwriters by client and LOB",
+        "inputType": "String, String",
+        "outputType": "[UserDetails]",
+        "parameters": {
+          "client": "string",
+          "lob": "string"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      }
+    },
+    "Mutation": {
+      "policyInForce": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Mark policy as in-force",
+        "inputType": "String, String, String",
+        "outputType": "Policy",
+        "parameters": {
+          "PolicyNumber": "string",
+          "QuoteNumber": "string",
+          "QuoteVersion": "string"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": true,
+        "eventTopic": "PolicyApiEvents"
+      },
+      "summaryOOS": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Get out-of-sequence summary for a policy",
+        "inputType": "inpPolicy",
+        "outputType": "[OOSSummary]",
+        "parameters": {
+          "input": "inpPolicy object"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "processRenewal": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Process policy renewal with configurations",
+        "inputType": "String, inpRenewalsConfigs",
+        "outputType": "Policy",
+        "parameters": {
+          "PolicyNumber": "string",
+          "Configs": "renewal configuration object"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "executeRenewal": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Execute policy renewal",
+        "inputType": "String, inpRenewalsConfigs",
+        "outputType": "Policy",
+        "parameters": {
+          "PolicyNumber": "string",
+          "Configs": "renewal configuration object"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "getForms": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Get forms for a quote",
+        "inputType": "Multiple string parameters",
+        "outputType": "[FormList]",
+        "parameters": {
+          "quoteNumber": "string",
+          "userName": "string",
+          "password": "string",
+          "grantType": "string",
+          "tokenURL": "string",
+          "productCode": "string",
+          "transactionType": "string",
+          "formFactoryAPIUrl": "string",
+          "programType": "string",
+          "quoteVersion": "string"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "postItem": {
+        "resolver": "PolicyCRUDResolvers",
+        "file": "src/PolicyCrudResolvers.js",
+        "description": "Create a new policy/quote",
+        "inputType": "inpPolicy",
+        "outputType": "Policy",
+        "parameters": {
+          "input": "inpPolicy object"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "putItem": {
+        "resolver": "PolicyCRUDResolvers",
+        "file": "src/PolicyCrudResolvers.js",
+        "description": "Update an existing policy/quote",
+        "inputType": "inpPolicy",
+        "outputType": "Policy",
+        "parameters": {
+          "input": "inpPolicy object"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": true,
+        "publishesEvents": false
+      },
+      "deleteItem": {
+        "resolver": "PolicyCRUDResolvers",
+        "file": "src/PolicyCrudResolvers.js",
+        "description": "Delete a policy/quote",
+        "inputType": "inpPolicy!",
+        "outputType": "Policy",
+        "parameters": {
+          "input": "inpPolicy object (required)"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "rateNewQuote": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Rate a new quote",
+        "inputType": "inpPolicy",
+        "outputType": "Policy",
+        "parameters": {
+          "input": "inpPolicy object"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": true,
+        "publishesEvents": true,
+        "eventTopic": "PolicyApiEvents"
+      },
+      "bindNewBusiness": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Bind new business quote to policy",
+        "inputType": "String, String, String, String, String",
+        "outputType": "Policy",
+        "parameters": {
+          "QuoteNumber": "string",
+          "Product": "string",
+          "bindStatus": "string",
+          "QuoteVersion": "string",
+          "PolicyStatusRemarks": "string"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": true,
+        "eventTopic": "PolicyApiEvents"
+      },
+      "saveAndBindNewBusiness": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Save and bind new business policy",
+        "inputType": "inpPolicy",
+        "outputType": "Policy",
+        "parameters": {
+          "input": "inpPolicy object"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": true,
+        "eventTopic": "PolicyApiEvents"
+      },
+      "bindEndorsement": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Bind endorsement to policy",
+        "inputType": "String, String, String, String",
+        "outputType": "Policy",
+        "parameters": {
+          "PolicyNumber": "string",
+          "policyCancelledStatus": "string",
+          "lastSubmittedPage": "string",
+          "PolicyStatusRemarks": "string",
+          "QuoteVersion": "string"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": true,
+        "eventTopic": "PolicyApiEvents"
+      },
+      "bindReinstate": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Bind reinstatement to policy",
+        "inputType": "String, String, String, String",
+        "outputType": "Policy",
+        "parameters": {
+          "PolicyNumber": "string",
+          "policyReinstatedStatus": "string",
+          "LastSubmittedPage": "string",
+          "PolicyStatusRemarks": "string"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": true,
+        "eventTopic": "PolicyApiEvents"
+      },
+      "bindCancellation": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Bind cancellation to policy",
+        "inputType": "String, String, String, String",
+        "outputType": "Policy",
+        "parameters": {
+          "PolicyNumber": "string",
+          "policyCancelledStatus": "string",
+          "LastSubmittedPage": "string",
+          "PolicyStatusRemarks": "string"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": true,
+        "eventTopic": "PolicyApiEvents"
+      },
+      "updatePolicyStatus": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Update policy status",
+        "inputType": "inpStatusUpdate",
+        "outputType": "Policy",
+        "parameters": {
+          "input": {
+            "PolicyNumber": "string",
+            "NewStatus": "string",
+            "Remark": "string"
+          }
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": true,
+        "eventTopic": "PolicyApiEvents"
+      },
+      "MultipleRate": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Rate multiple policies at once",
+        "inputType": "[inpPolicy]",
+        "outputType": "ComparativePolicy",
+        "parameters": {
+          "policies": "array of inpPolicy objects"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "multipleBind": {
+        "resolver": "Not implemented",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Bind multiple policies at once (commented out)",
+        "inputType": "[inpPolicy]",
+        "outputType": "[Policy]",
+        "parameters": {
+          "input": "array of inpPolicy objects"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "multipleRatesSave": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Save multiple rates for comparative policies",
+        "inputType": "inpComparativePolicy",
+        "outputType": "ComparativePolicy",
+        "parameters": {
+          "input": "inpComparativePolicy object"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "offerQuote": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Offer a quote to customer",
+        "inputType": "String, String, String, String, String",
+        "outputType": "Policy",
+        "parameters": {
+          "QuoteNumber": "string",
+          "Product": "string",
+          "newStatus": "string",
+          "Remark": "string",
+          "QuoteVersion": "string"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": true,
+        "eventTopic": "PolicyApiEvents"
+      },
+      "startEndorsement": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Initiate endorsement transaction",
+        "inputType": "String, String, String, String, String",
+        "outputType": "Policy",
+        "parameters": {
+          "PolicyNumber": "string",
+          "TransactionType": "string",
+          "EffectiveDate": "string",
+          "LastSubmittedPage": "string",
+          "QuoteVersion": "string"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": true,
+        "eventTopic": "PolicyApiEvents"
+      },
+      "startCancellation": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Initiate cancellation transaction",
+        "inputType": "String, String, String, String, String",
+        "outputType": "Policy",
+        "parameters": {
+          "PolicyNumber": "string",
+          "TransactionType": "string",
+          "EffectiveDate": "string",
+          "LastSubmittedPage": "string",
+          "QuoteVersion": "string"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": true,
+        "eventTopic": "PolicyApiEvents"
+      },
+      "startReinstate": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Initiate reinstatement transaction",
+        "inputType": "String, String, String, String",
+        "outputType": "Policy",
+        "parameters": {
+          "PolicyNumber": "string",
+          "TransactionType": "string",
+          "EffectiveDate": "string",
+          "LastSubmittedPage": "string"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": true,
+        "eventTopic": "PolicyApiEvents"
+      },
+      "rateEndorsement": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Rate an endorsement transaction",
+        "inputType": "inpPolicy",
+        "outputType": "Policy",
+        "parameters": {
+          "input": "inpPolicy object"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": true,
+        "publishesEvents": true,
+        "eventTopic": "PolicyApiEvents"
+      },
+      "revertTransaction": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Revert a policy transaction",
+        "inputType": "inpPolicy",
+        "outputType": "Policy",
+        "parameters": {
+          "input": "inpPolicy object"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": true,
+        "eventTopic": "PolicyApiEvents"
+      },
+      "postToNotificationAPI": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Post notification to external API",
+        "inputType": "inpNotification",
+        "outputType": "String",
+        "parameters": {
+          "input": "notification object"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "CheckConcurrentAccess": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Check if concurrent access is allowed for a policy",
+        "inputType": "inpConcurrencyDetails",
+        "outputType": "Boolean",
+        "parameters": {
+          "input": "concurrency details object"
+        },
+        "externalDependency": "src/checkConcurrency.js",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "updateQuoteStatus": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Update quote status",
+        "inputType": "inpPolicy",
+        "outputType": "Policy",
+        "parameters": {
+          "input": {
+            "QuoteNumber": "string",
+            "QuoteVersion": "string",
+            "NewStatus": "string",
+            "Remark": "string"
+          }
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": true,
+        "eventTopic": "PolicyApiEvents"
+      },
+      "dummyMutation": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Test/dummy mutation that returns input",
+        "inputType": "inpPolicy",
+        "outputType": "Policy",
+        "parameters": {
+          "input": "inpPolicy object"
+        },
+        "externalDependency": null,
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "bindCancelRewrite": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Bind cancel-rewrite transaction to policy",
+        "inputType": "String, String, String, String",
+        "outputType": "Policy",
+        "parameters": {
+          "PolicyNumber": "string",
+          "PolicyStatus": "string",
+          "LastSubmittedPage": "string",
+          "PolicyStatusRemarks": "string"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": true,
+        "eventTopic": "PolicyApiEvents"
+      },
+      "startCancelRewrite": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Start cancel-rewrite transaction",
+        "inputType": "String, String, String",
+        "outputType": "Policy",
+        "parameters": {
+          "PolicyNumber": "string",
+          "PolicyStatus": "string",
+          "CancelRewriteType": "string"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": true,
+        "eventTopic": "PolicyApiEvents"
+      },
+      "versionUpdate": {
+        "resolver": "Not found in resolver files",
+        "file": null,
+        "description": "Update version information",
+        "inputType": "inpPolicy",
+        "outputType": "Policy",
+        "parameters": {
+          "input": "inpPolicy object"
+        },
+        "externalDependency": null,
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "updateIndex": {
+        "resolver": "Not found in resolver files",
+        "file": null,
+        "description": "Update index for comparative policy",
+        "inputType": "inpComparativePolicy",
+        "outputType": "ComparativePolicy",
+        "parameters": {
+          "input": "inpComparativePolicy object"
+        },
+        "externalDependency": null,
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "validateOTP": {
+        "resolver": "Not found in resolver files",
+        "file": null,
+        "description": "Validate OTP token",
+        "inputType": "String, String",
+        "outputType": "Boolean",
+        "parameters": {
+          "id": "string",
+          "otp": "string"
+        },
+        "externalDependency": null,
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "singleUpload": {
+        "resolver": "Not found in resolver files",
+        "file": null,
+        "description": "Upload a single file",
+        "inputType": "String",
+        "outputType": "File",
+        "parameters": {
+          "file": "string"
+        },
+        "externalDependency": null,
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "insertTemplate": {
+        "resolver": "Not found in resolver files",
+        "file": null,
+        "description": "Insert a new template",
+        "inputType": "inpTemplates",
+        "outputType": "Templates",
+        "parameters": {
+          "input": "inpTemplates object"
+        },
+        "externalDependency": null,
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "bindProcess": {
+        "resolver": "Not found in resolver files",
+        "file": null,
+        "description": "Execute bind process with email parameters",
+        "inputType": "inpPolicy, String, String, String, String",
+        "outputType": "Policy",
+        "parameters": {
+          "input": "inpPolicy object",
+          "emailBody": "string",
+          "emailSubject": "string",
+          "attachments": "string",
+          "newStatus": "string"
+        },
+        "externalDependency": null,
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "expirePolicy": {
+        "resolver": "Not found in resolver files",
+        "file": null,
+        "description": "Expire a policy",
+        "inputType": "String",
+        "outputType": "Policy",
+        "parameters": {
+          "PolicyNumber": "string"
+        },
+        "externalDependency": null,
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "renewPolicy": {
+        "resolver": "Not found in resolver files",
+        "file": null,
+        "description": "Renew a policy",
+        "inputType": "String",
+        "outputType": "Policy",
+        "parameters": {
+          "PolicyNumber": "string"
+        },
+        "externalDependency": null,
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "saveConflicts": {
+        "resolver": "Not found in resolver files",
+        "file": null,
+        "description": "Save transaction conflicts",
+        "inputType": "inpTransactionConflicts",
+        "outputType": "TransactionConflicts",
+        "parameters": {
+          "input": "inpTransactionConflicts object"
+        },
+        "externalDependency": null,
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "processOutOfSequence": {
+        "resolver": "Not found in resolver files",
+        "file": null,
+        "description": "Process out-of-sequence transaction",
+        "inputType": "inpPolicy",
+        "outputType": "Policy",
+        "parameters": {
+          "input": "inpPolicy object"
+        },
+        "externalDependency": null,
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "multiplePolicyNumberGeneration": {
+        "resolver": "Not found in resolver files",
+        "file": null,
+        "description": "Generate policy numbers for multiple policies",
+        "inputType": "[inpPolicy]",
+        "outputType": "[Policy]",
+        "parameters": {
+          "policies": "array of inpPolicy objects"
+        },
+        "externalDependency": null,
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "bindRenewal": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Bind renewal to existing policy",
+        "inputType": "String, String, String, String, String",
+        "outputType": "Policy",
+        "parameters": {
+          "PolicyNumber": "string",
+          "QuoteVersion": "string",
+          "PolicyRenewedStatus": "string",
+          "LastSubmittedPage": "string",
+          "PolicyStatusRemarks": "string"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": true,
+        "eventTopic": "PolicyApiEvents"
+      },
+      "startRenewal": {
+        "resolver": "Not found in resolver files",
+        "file": null,
+        "description": "Start renewal transaction",
+        "inputType": "String, String, String",
+        "outputType": "Policy",
+        "parameters": {
+          "PolicyNumber": "string",
+          "TransactionType": "string",
+          "LastSubmittedPage": "string"
+        },
+        "externalDependency": null,
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "commitOOSTransaction": {
+        "resolver": "Not found in resolver files",
+        "file": null,
+        "description": "Commit out-of-sequence transaction",
+        "inputType": "String, String, String",
+        "outputType": "Policy",
+        "parameters": {
+          "PolicyNumber": "string",
+          "EffectiveDate": "string",
+          "PolicyStatus": "string"
+        },
+        "externalDependency": null,
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "revertOOSTransaction": {
+        "resolver": "Not found in resolver files",
+        "file": null,
+        "description": "Revert out-of-sequence transaction",
+        "inputType": "String",
+        "outputType": "Boolean",
+        "parameters": {
+          "PolicyNumber": "string"
+        },
+        "externalDependency": null,
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "saveAndBindEndorsement": {
+        "resolver": "Not found in resolver files",
+        "file": null,
+        "description": "Save and bind endorsement transaction",
+        "inputType": "inpPolicy",
+        "outputType": "Policy",
+        "parameters": {
+          "input": "inpPolicy object"
+        },
+        "externalDependency": null,
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "rateItem": {
+        "resolver": "Not found in resolver files",
+        "file": null,
+        "description": "Rate a single policy item",
+        "inputType": "inpPolicy",
+        "outputType": "Policy",
+        "parameters": {
+          "input": "inpPolicy object"
+        },
+        "externalDependency": null,
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "processBillingCancellation": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Process billing cancellation for a policy",
+        "inputType": "String, inpBillingRequest",
+        "outputType": "Policy",
+        "parameters": {
+          "PolicyNumber": "string",
+          "BillingRequest": "billing request object"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": true,
+        "eventTopic": "PolicyApiEvents"
+      },
+      "processBillingReinstatement": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Process billing reinstatement for a policy",
+        "inputType": "String, inpBillingRequest",
+        "outputType": "Policy",
+        "parameters": {
+          "PolicyNumber": "string",
+          "BillingRequest": "billing request object"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": true,
+        "eventTopic": "PolicyApiEvents"
+      },
+      "generateFormsDraft": {
+        "resolver": "Not found in resolver files",
+        "file": null,
+        "description": "Generate forms draft for a policy",
+        "inputType": "inpPolicy, String, String, String, Boolean, String",
+        "outputType": "String",
+        "parameters": {
+          "Policy": "inpPolicy object",
+          "ProductCode": "string",
+          "TransactionType": "string",
+          "ProgramType": "string",
+          "IsDraft": "boolean",
+          "PolicyEffectiveDate": "string"
+        },
+        "externalDependency": null,
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "nonRenewal": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Mark policy as non-renewal",
+        "inputType": "String",
+        "outputType": "Policy",
+        "parameters": {
+          "PolicyNumber": "string"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": false
+      },
+      "copySubmission": {
+        "resolver": "PolicyBusinessResolvers",
+        "file": "src/PolicyBusinessResolvers.js",
+        "description": "Copy a submission/quote",
+        "inputType": "String, String, String, String, String, String",
+        "outputType": "Policy",
+        "parameters": {
+          "quoteNumber": "string",
+          "quoteVersion": "string",
+          "product": "string",
+          "policyStatus": "string",
+          "lastSubmittedPage": "string",
+          "userName": "optional context-derived"
+        },
+        "externalDependency": "@cogitate/core-pos-components",
+        "hasConcurrencyCheck": false,
+        "publishesEvents": true,
+        "eventTopic": "PolicyApiEvents"
+      }
+    }
+  },
+  "summary": {
+    "totalResolvers": 93,
+    "queryResolvers": 20,
+    "mutationResolvers": 73,
+    "implementedMutations": 44,
+    "unimplementedMutations": 29,
+    "resolversWithConcurrencyCheck": 3,
+    "resolversPublishingEvents": 25,
+    "eventTopic": "PolicyApiEvents"
+  }
+}

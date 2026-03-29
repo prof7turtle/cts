@@ -1,0 +1,131 @@
+{
+  "schema_description": "Hook Configuration Schema - Define Pre and Post hooks for request/response processing",
+  "root_fields": {
+    "Client": {
+      "type": "string",
+      "description": "The client or application name for which this hook configuration is defined"
+    },
+    "Hooks": {
+      "type": "object",
+      "description": "Container for hook definitions organized by execution phase"
+    }
+  },
+  "Hooks": {
+    "Pre": {
+      "type": "array",
+      "description": "Array of hooks that execute before the main request processing"
+    },
+    "Post": {
+      "type": "array",
+      "description": "Array of hooks that execute after the main request processing completes"
+    }
+  },
+  "Hook_Entry": {
+    "RequestName": {
+      "type": "string",
+      "description": "Unique identifier for the hook, typically representing an API endpoint or action (e.g., '/Quote/Landing', '/Application/Summary')"
+    },
+    "NeedCascading": {
+      "type": "boolean",
+      "description": "Indicates whether cascading operations should be applied; if true, the hook will cascade to related operations"
+    },
+    "HookCallCascading": {
+      "type": "boolean",
+      "optional": true,
+      "description": "Optional flag to control cascading behavior for hook calls; when true, enables cascading for nested hook executions"
+    },
+    "StaticParams": {
+      "type": "object",
+      "description": "Configuration parameters specific to the hook execution"
+    },
+    "Actions": {
+      "type": "array",
+      "description": "Array of action objects that define the operations to execute when this hook is triggered"
+    }
+  },
+  "Action_Entry": {
+    "FunctionName": {
+      "type": "string",
+      "description": "The name of the function or handler to execute (e.g., 'GenerateQuoteNumber', 'EmailHook', 'ExecuteUnderWritingRules')"
+    },
+    "ModuleName": {
+      "type": "string",
+      "optional": true,
+      "description": "The module or package name where the function is defined (e.g., '@cogitate/core-pos-components', '@cogitate/base-homeowners-pos-components')"
+    },
+    "CallFunction": {
+      "type": "boolean",
+      "optional": true,
+      "description": "Flag indicating whether the function should be invoked; when true, the function will be called"
+    },
+    "isEndpoint": {
+      "type": "boolean",
+      "optional": true,
+      "description": "Flag indicating whether this action is an external endpoint call; when true, the action is treated as an HTTP/API endpoint invocation"
+    },
+    "Condition": {
+      "type": "string",
+      "optional": true,
+      "description": "Conditional expression that must evaluate to true for the action to execute (e.g., 'Transaction.Type = \"Application\"')"
+    },
+    "Path": {
+      "type": "string",
+      "optional": true,
+      "description": "File path or resource location for external script/configuration execution (e.g., 'BASE/configs/Personal/HO3/hooksCall/property.js')"
+    }
+  },
+  "Hook_Types_Overview": {
+    "Pre_Hooks": {
+      "purpose": "Execute validation, transformation, and preparation logic before request processing",
+      "common_use_cases": [
+        "Generate quote numbers",
+        "Validate input data",
+        "Execute geolocation lookups",
+        "Apply business rules",
+        "Prepare cached data"
+      ]
+    },
+    "Post_Hooks": {
+      "purpose": "Execute post-processing logic after request is handled, such as notifications and document handling",
+      "common_use_cases": [
+        "Send email notifications",
+        "Copy or manage documents",
+        "Generate PDF forms",
+        "Update policy status",
+        "Trigger async web jobs"
+      ]
+    }
+  },
+  "Field_Examples": {
+    "RequestName_examples": [
+      "/Quote/Landing-AiSubmission",
+      "/Quote/Summary/SendCQuoteEmail",
+      "/Application/Summary/GeneratePolicyNumber",
+      "Pending-Cancellation-Action",
+      "/ExecuteExternalAPI"
+    ],
+    "FunctionName_examples": [
+      "GenerateQuoteNumber",
+      "getGeoCodeAddressHook",
+      "EmailHook",
+      "ExecuteUnderWritingRules",
+      "callComparativeRater",
+      "updatePolicyStatusHook"
+    ],
+    "ModuleName_examples": [
+      "@cogitate/core-pos-components",
+      "@cogitate/base-homeowners-pos-components",
+      ""
+    ],
+    "Condition_examples": [
+      "Transaction.Type = 'Application'",
+      "Transaction.Type = 'Endorsement' or Transaction.Type = 'Renewal'",
+      "Transaction.Type = 'Application' or Transaction.Type = 'Quote' or Transaction.Type = 'Endorsement'"
+    ],
+    "Path_examples": [
+      "COGITATE/configs/Personal/HO3/hooksCall/property.js",
+      "COGITATE/configs/Personal/HO3/hooksCall/policyHolder.js",
+      "COGITATE/configs/Personal/HO3/hooksCall/riskQualifiers.js"
+    ]
+  }
+}
