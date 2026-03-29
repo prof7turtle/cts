@@ -101,6 +101,15 @@ export async function fetchWorkflowById(id: string) {
             template
             url
             email
+            requestName
+            moduleName
+            isEndpoint
+            callFunction
+            path
+            description
+            needCascading
+            hookCallCascading
+            staticParamsJson
           }
         }
         edges {

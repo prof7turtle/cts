@@ -1,0 +1,40 @@
+{
+    "Hooks": {
+        "Pre": [
+            {
+                "RequestName": "Action Name",
+                "NeedCascading": true,
+                "HookCallCascading": true,
+                "StaticParams": {},
+                "Actions": [
+                    {
+                        "ModuleName": "",
+                        "FunctionName": "",
+                        "CallFunction": true,
+                        "isEndpoint": true,
+                        "Condition": "",
+                        "Path": ""
+                    }
+                ]
+            }
+        ],
+        "Post": [
+            {
+                "RequestName": "Action Name",
+                "NeedCascading": true,
+                "HookCallCascading": true,
+                "StaticParams": {},
+                "Actions": [
+                    {
+                        "ModuleName": "",
+                        "FunctionName": "",
+                        "CallFunction": true,
+                        "isEndpoint": true,
+                        "Condition": "",
+                        "Path": ""
+                    }
+                ]
+            }
+        ]
+    }
+}

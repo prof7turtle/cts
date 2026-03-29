@@ -15,7 +15,8 @@ body {
 
 .builder-layout {
   display: flex;
-  min-height: calc(100vh - 70px);
+  height: calc(100vh - 70px);
+  overflow: hidden;
 }
 
 .builder-main {
@@ -23,6 +24,8 @@ body {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .builder-toolbar {
@@ -77,12 +80,16 @@ body {
 
 .canvas-wrap {
   flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
 }
 
 .schema-panel {
   border-top: 1px solid #dbe3ef;
   background: #ffffff;
   padding: 10px 14px 14px;
+  flex-shrink: 0;
 }
 
 .schema-panel label {
@@ -112,6 +119,7 @@ body {
   color: #e2e8f0;
   padding: 14px;
   overflow-y: auto;
+  height: 100%;
 }
 
 .nodes-panel h2 {
@@ -277,18 +285,315 @@ body {
   background: #f7fafd !important;
 }
 
+/* ── Canvas cursor visibility ─────────────────────── */
+.canvas-wrap .react-flow {
+  cursor: crosshair;
+}
+
+.react-flow__pane {
+  cursor: crosshair !important;
+}
+
+.react-flow__pane:active {
+  cursor: grabbing !important;
+}
+
+.react-flow__node {
+  cursor: pointer !important;
+}
+
+.react-flow__handle {
+  cursor: crosshair !important;
+}
+
 .react-flow__edge-path {
   stroke-width: 2;
+}
+
+/* ── Execution Engine: Node Highlights ─────────────────────── */
+
+@keyframes nodeExecutingPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 8px 2px rgba(34, 197, 94, 0.4);
+    border-color: #22c55e;
+  }
+  50% {
+    box-shadow: 0 0 20px 6px rgba(34, 197, 94, 0.7);
+    border-color: #16a34a;
+  }
+}
+
+.workflow-node.node-executing {
+  border: 2.5px solid #22c55e !important;
+  animation: nodeExecutingPulse 1s ease-in-out infinite;
+}
+
+.workflow-node.node-completed {
+  border: 2.5px solid #22c55e !important;
+  box-shadow: 0 0 8px 1px rgba(34, 197, 94, 0.25);
+}
+
+.workflow-node.node-error {
+  border: 2.5px solid #ef4444 !important;
+  box-shadow: 0 0 10px 2px rgba(239, 68, 68, 0.35);
+}
+
+.node-status-indicator {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  z-index: 10;
+  border: 2px solid #ffffff;
+}
+
+/* ── Execution Logs Panel ──────────────────────────────────── */
+
+.exec-logs-panel {
+  background: #0f172a;
+  border-top: 1px solid #1e293b;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  max-height: 220px;
+}
+
+.exec-logs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-bottom: 1px solid #1e293b;
+  flex-shrink: 0;
+}
+
+.exec-state-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #ffffff;
+  padding: 2px 8px;
+  border-radius: 10px;
+  letter-spacing: 0.5px;
+}
+
+.exec-logs-clear-btn {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #94a3b8;
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.exec-logs-clear-btn:hover {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+.exec-progress-bar-track {
+  height: 3px;
+  background: #1e293b;
+  flex-shrink: 0;
+}
+
+.exec-progress-bar-fill {
+  height: 100%;
+  transition: width 0.3s ease, background 0.3s ease;
+  border-radius: 0 2px 2px 0;
+}
+
+.exec-logs-scroll {
+  overflow-y: auto;
+  flex: 1;
+  padding: 6px 0;
+  min-height: 0;
+}
+
+.exec-logs-empty {
+  padding: 20px 14px;
+  color: #64748b;
+  font-size: 12px;
+  text-align: center;
+}
+
+.exec-log-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px 14px;
+  font-size: 12px;
+  font-family: Consolas, Monaco, "Courier New", monospace;
+  line-height: 1.5;
+  border-left: 3px solid transparent;
+}
+
+.exec-log-entry.log-badge-running {
+  border-left-color: #3b82f6;
+  color: #93c5fd;
+}
+
+.exec-log-entry.log-badge-completed {
+  border-left-color: #22c55e;
+  color: #86efac;
+}
+
+.exec-log-entry.log-badge-error {
+  border-left-color: #ef4444;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.exec-log-entry.log-badge-skipped {
+  border-left-color: #f59e0b;
+  color: #fcd34d;
+}
+
+.exec-log-entry.log-badge-idle {
+  border-left-color: #475569;
+  color: #94a3b8;
+}
+
+.exec-log-time {
+  color: #64748b;
+  flex-shrink: 0;
+  min-width: 65px;
+}
+
+.exec-log-icon {
+  flex-shrink: 0;
+}
+
+.exec-log-node {
+  font-weight: 600;
+  color: #e2e8f0;
+  flex-shrink: 0;
+  min-width: 60px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exec-log-msg {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.exec-log-duration {
+  color: #64748b;
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+/* ── Execution Toolbar Buttons ─────────────────────────────── */
+
+.exec-btn {
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.exec-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.exec-btn-run {
+  background: #22c55e;
+  color: #ffffff;
+}
+
+.exec-btn-run:hover:not(:disabled) {
+  background: #16a34a;
+}
+
+.exec-btn-pause {
+  background: #f59e0b;
+  color: #ffffff;
+}
+
+.exec-btn-pause:hover:not(:disabled) {
+  background: #d97706;
+}
+
+.exec-btn-stop {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.exec-btn-stop:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.exec-btn-reset {
+  background: #64748b;
+  color: #ffffff;
+}
+
+.exec-btn-reset:hover:not(:disabled) {
+  background: #475569;
+}
+
+/* ── Bottom Panel Tab Switcher ─────────────────────────────── */
+
+.bottom-panel-tabs {
+  display: flex;
+  border-bottom: 1px solid #dbe3ef;
+  background: #f8fafc;
+  flex-shrink: 0;
+}
+
+.bottom-panel-tab {
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #64748b;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+
+.bottom-panel-tab:hover {
+  color: #0f172a;
+  background: #f1f5f9;
+}
+
+.bottom-panel-tab.active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
 }
 
 @media (max-width: 980px) {
   .builder-layout {
     flex-direction: column;
+    height: auto;
+    max-height: calc(100vh - 70px);
+    overflow-y: auto;
   }
 
   .nodes-panel {
     width: 100%;
     max-height: 260px;
+    height: auto;
     border-right: 0;
     border-bottom: 1px solid #dbe3ef;
   }

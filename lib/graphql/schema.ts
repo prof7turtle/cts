@@ -91,6 +91,15 @@ export const typeDefs = gql`
     url: String
     email: String
     cases: [CaseInput!]
+    requestName: String
+    moduleName: String
+    isEndpoint: Boolean
+    callFunction: Boolean
+    path: String
+    description: String
+    needCascading: Boolean
+    hookCallCascading: Boolean
+    staticParamsJson: String
   }
 
   input CaseInput {
@@ -113,6 +122,15 @@ export const typeDefs = gql`
     url: String
     email: String
     cases: [Case!]
+    requestName: String
+    moduleName: String
+    isEndpoint: Boolean
+    callFunction: Boolean
+    path: String
+    description: String
+    needCascading: Boolean
+    hookCallCascading: Boolean
+    staticParamsJson: String
   }
 
   type Case {
