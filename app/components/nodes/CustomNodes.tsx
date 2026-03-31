@@ -3,15 +3,47 @@
 import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { nodeDefinitionByType } from './nodeTypes';
+import type { BuilderNodeData } from '../hookSchema';
+import type { NodeExecStatus } from '../useExecutionEngine';
 
-type BuilderNodeData = {
-  label?: string;
-  condition?: string;
-  color?: string;
-};
+function getExecClassName(status: NodeExecStatus | undefined): string {
+  switch (status) {
+    case 'running':
+      return 'node-executing';
+    case 'completed':
+      return 'node-completed';
+    case 'error':
+      return 'node-error';
+    default:
+      return '';
+  }
+}
+
+function StatusIndicator({ status }: { status?: NodeExecStatus }) {
+  if (!status || status === 'idle') return null;
+
+  const config: Record<string, { bg: string; icon: string }> = {
+    running: { bg: '#3b82f6', icon: '⏳' },
+    completed: { bg: '#22c55e', icon: '✓' },
+    error: { bg: '#ef4444', icon: '✕' },
+    skipped: { bg: '#f59e0b', icon: '⏭' },
+  };
+
+  const c = config[status];
+  if (!c) return null;
+
+  return (
+    <div
+      className="node-status-indicator"
+      style={{ background: c.bg }}
+    >
+      {c.icon}
+    </div>
+  );
+}
 
 function BaseNode({ data, selected, type }: NodeProps) {
-  const typedData = (data ?? {}) as BuilderNodeData;
+  const typedData = (data ?? {}) as BuilderNodeData & { executionStatus?: NodeExecStatus };
   const definition = nodeDefinitionByType[type ?? ''];
   const color = typedData.color ?? definition?.color ?? '#334155';
   const label = typedData.label ?? definition?.label ?? type ?? 'Action';
@@ -19,8 +51,11 @@ function BaseNode({ data, selected, type }: NodeProps) {
   const condition =
     typedData.condition ?? "Transaction.Type = 'Application'";
 
+  const execClass = getExecClassName(typedData.executionStatus);
+
   return (
-    <div className={`workflow-node ${selected ? 'selected' : ''}`}>
+    <div className={`workflow-node ${selected ? 'selected' : ''} ${execClass}`} style={{ position: 'relative' }}>
+      <StatusIndicator status={typedData.executionStatus} />
       <Handle type="target" position={Position.Top} style={{ background: color }} />
 
       <div className="node-header" style={{ background: color }}>
@@ -72,3 +107,4 @@ MemoNode.displayName = 'MemoNode';
 export const customNodeTypes = Object.fromEntries(
   Object.keys(nodeDefinitionByType).map((type) => [type, MemoNode])
 );
+

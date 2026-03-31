@@ -8,7 +8,7 @@ export default function HomePage() {
   const [view, setView] = useState<'list' | 'builder'>('list');
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f9f9f9' }}>
+    <div style={{ height: '100vh', overflow: 'hidden', backgroundColor: '#f9f9f9' }}>
       {/* Navigation Header */}
       <nav
         style={{
@@ -19,6 +19,7 @@ export default function HomePage() {
           backgroundColor: '#ffffff',
           borderBottom: '1px solid #e0e0e0',
           boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+          flexShrink: 0,
         }}
       >
         <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#0066cc' }}>
@@ -57,7 +58,7 @@ export default function HomePage() {
       </nav>
 
       {/* Content */}
-      <div style={{ minHeight: 'calc(100vh - 70px)' }}>
+      <div style={{ height: 'calc(100vh - 70px)', overflow: 'hidden' }}>
         {view === 'list' ? <WorkflowList /> : <WorkflowBuilder />}
       </div>
     </div>

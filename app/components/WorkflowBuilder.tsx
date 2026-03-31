@@ -19,13 +19,16 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import NodesPanel from './NodesPanel';
+import ExecutionLogs from './ExecutionLogs';
 import { customNodeTypes } from './nodes/CustomNodes';
 import { nodeDefinitionByType } from './nodes/nodeTypes';
 import {
   canvasToHookSchema,
   hookSchemaToCanvas,
   type HookConfig,
+  type BuilderNodeData,
 } from './hookSchema';
+import { useExecutionEngine } from './useExecutionEngine';
 
 const initialNodes: Node[] = [
   {
@@ -44,12 +47,6 @@ let edgeId = 0;
 const getNodeId = () => `node-${++nodeId}`;
 const getEdgeId = () => `edge-${++edgeId}`;
 
-type BuilderNodeData = {
-  label?: string;
-  condition?: string;
-  color?: string;
-};
-
 function WorkflowCanvas() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -59,7 +56,29 @@ function WorkflowCanvas() {
   const [clientCode, setClientCode] = useState('COGITATE');
   const [serializedSchema, setSerializedSchema] = useState('');
   const [message, setMessage] = useState<string | null>(null);
+  const [bottomPanel, setBottomPanel] = useState<'schema' | 'logs'>('logs');
   const { screenToFlowPosition, fitView } = useReactFlow();
+
+  // ─── Execution Engine ──────────────────────────────────────
+  const nodesRef = useCallback(() => nodes, [nodes]);
+  const edgesRef = useCallback(() => edges, [edges]);
+  const engine = useExecutionEngine(nodesRef, edgesRef);
+
+  const isExecuting = engine.state === 'running' || engine.state === 'paused';
+
+  // Inject execution status into node data for visual highlighting
+  const displayNodes = useMemo(() => {
+    if (Object.keys(engine.nodeStatuses).length === 0) return nodes;
+
+    return nodes.map((node) => {
+      const status = engine.nodeStatuses[node.id];
+      if (!status || status === 'idle') return node;
+      return {
+        ...node,
+        data: { ...node.data, executionStatus: status },
+      };
+    });
+  }, [nodes, engine.nodeStatuses]);
 
   const selectedNode = useMemo(
     () => nodes.find((node) => node.id === selectedNodeId) ?? null,
@@ -68,6 +87,7 @@ function WorkflowCanvas() {
 
   const onConnect = useCallback(
     (params: Connection) => {
+      if (isExecuting) return;
       setEdges((currentEdges) =>
         addEdge(
           {
@@ -81,16 +101,21 @@ function WorkflowCanvas() {
         )
       );
     },
-    [setEdges]
+    [setEdges, isExecuting]
   );
 
-  const onDragOver = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-  }, []);
+  const onDragOver = useCallback(
+    (event: React.DragEvent) => {
+      if (isExecuting) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+    },
+    [isExecuting]
+  );
 
   const onDrop = useCallback(
     (event: React.DragEvent) => {
+      if (isExecuting) return;
       event.preventDefault();
 
       const type = event.dataTransfer.getData('application/reactflow');
@@ -112,13 +137,18 @@ function WorkflowCanvas() {
           label: definition?.label ?? type,
           color: definition?.color,
           condition: definition?.defaultData?.condition,
+          requestName: definition?.defaultData?.requestName,
+          moduleName: definition?.defaultModuleName || undefined,
+          isEndpoint: definition?.defaultData?.isEndpoint,
+          callFunction: true,
+          description: definition?.description,
         } satisfies BuilderNodeData,
       };
 
       setNodes((currentNodes) => currentNodes.concat(node));
       setMessage(null);
     },
-    [screenToFlowPosition, setNodes]
+    [screenToFlowPosition, setNodes, isExecuting]
   );
 
   const onSelectionChange = useCallback((params: OnSelectionChangeParams) => {
@@ -132,6 +162,8 @@ function WorkflowCanvas() {
   };
 
   const deleteSelection = useCallback(() => {
+    if (isExecuting) return;
+
     if (selectedNodeId) {
       setNodes((currentNodes) => currentNodes.filter((node) => node.id !== selectedNodeId));
       setEdges((currentEdges) =>
@@ -145,34 +177,28 @@ function WorkflowCanvas() {
       setEdges((currentEdges) => currentEdges.filter((edge) => edge.id !== selectedEdgeId));
       setSelectedEdgeId(null);
     }
-  }, [selectedEdgeId, selectedNodeId, setEdges, setNodes]);
+  }, [selectedEdgeId, selectedNodeId, setEdges, setNodes, isExecuting]);
 
-  const updateCondition = useCallback(
-    (condition: string) => {
-      if (!selectedNodeId) {
-        return;
-      }
+  // ─── Generic node data updater ──────────────────────────────────
+  const updateNodeData = useCallback(
+    (field: keyof BuilderNodeData, value: string | boolean | undefined) => {
+      if (!selectedNodeId || isExecuting) return;
 
       setNodes((currentNodes) =>
         currentNodes.map((node) => {
-          if (node.id !== selectedNodeId) {
-            return node;
-          }
-
+          if (node.id !== selectedNodeId) return node;
           const data = (node.data ?? {}) as BuilderNodeData;
           return {
             ...node,
-            data: {
-              ...data,
-              condition,
-            } satisfies BuilderNodeData,
+            data: { ...data, [field]: value } satisfies BuilderNodeData,
           };
         })
       );
     },
-    [selectedNodeId, setNodes]
+    [selectedNodeId, setNodes, isExecuting]
   );
 
+  // ─── Export / Import / Download ─────────────────────────────────
   const exportSchema = useCallback(() => {
     const schema = canvasToHookSchema(nodes, edges, clientCode);
     setSerializedSchema(JSON.stringify(schema, null, 2));
@@ -180,6 +206,7 @@ function WorkflowCanvas() {
   }, [clientCode, edges, nodes]);
 
   const importSchema = useCallback(() => {
+    if (isExecuting) return;
     try {
       const parsed = JSON.parse(serializedSchema) as HookConfig;
       const restored = hookSchemaToCanvas(parsed);
@@ -193,7 +220,55 @@ function WorkflowCanvas() {
     } catch {
       setMessage('Invalid hook schema JSON. Please fix format and retry.');
     }
-  }, [fitView, serializedSchema, setEdges, setNodes]);
+  }, [fitView, serializedSchema, setEdges, setNodes, isExecuting]);
+
+  const downloadSchema = useCallback(() => {
+    const schema = canvasToHookSchema(nodes, edges, clientCode);
+    const json = JSON.stringify(schema, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `hook-schema-${clientCode.toLowerCase()}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+    setMessage(`Downloaded hook-schema-${clientCode.toLowerCase()}.json`);
+  }, [clientCode, edges, nodes]);
+
+  // ─── Execution handlers ─────────────────────────────────────────
+  const handleRun = useCallback(() => {
+    engine.reset();
+    setBottomPanel('logs');
+    // Small delay to ensure reset completes before run
+    setTimeout(() => engine.run(), 50);
+  }, [engine]);
+
+  const handlePause = useCallback(() => {
+    engine.pause();
+  }, [engine]);
+
+  const handleResume = useCallback(() => {
+    engine.resume();
+  }, [engine]);
+
+  const handleStop = useCallback(() => {
+    engine.stop();
+  }, [engine]);
+
+  const handleReset = useCallback(() => {
+    engine.reset();
+  }, [engine]);
+
+  // ─── Helpers ────────────────────────────────────────────────────
+  const isActionNode =
+    selectedNode &&
+    selectedNode.type !== 'start' &&
+    selectedNode.type !== 'end';
+
+  const selectedData = (selectedNode?.data ?? {}) as BuilderNodeData;
+  const selectedDef = nodeDefinitionByType[selectedNode?.type ?? ''];
 
   return (
     <div className="builder-layout">
@@ -222,6 +297,39 @@ function WorkflowCanvas() {
           <button type="button" onClick={importSchema}>
             Import Schema
           </button>
+          <button type="button" onClick={downloadSchema}>
+            ⬇ Download JSON
+          </button>
+
+          {/* ─── Execution Controls ─────────────────────────── */}
+          <div style={{ borderLeft: '1px solid #c9d7ea', paddingLeft: '8px', marginLeft: '4px', display: 'flex', gap: '4px' }}>
+            {engine.state !== 'running' && engine.state !== 'paused' && (
+              <button type="button" className="exec-btn exec-btn-run" onClick={handleRun}>
+                ▶ Run
+              </button>
+            )}
+            {engine.state === 'running' && (
+              <button type="button" className="exec-btn exec-btn-pause" onClick={handlePause}>
+                ⏸ Pause
+              </button>
+            )}
+            {engine.state === 'paused' && (
+              <button type="button" className="exec-btn exec-btn-run" onClick={handleResume}>
+                ▶ Resume
+              </button>
+            )}
+            {isExecuting && (
+              <button type="button" className="exec-btn exec-btn-stop" onClick={handleStop}>
+                ⏹ Stop
+              </button>
+            )}
+            {(engine.state === 'completed' || engine.state === 'error') && (
+              <button type="button" className="exec-btn exec-btn-reset" onClick={handleReset}>
+                ↺ Reset
+              </button>
+            )}
+          </div>
+
           {message && <span className="toolbar-message">{message}</span>}
         </div>
 
@@ -236,6 +344,54 @@ function WorkflowCanvas() {
                 placeholder='e.g., Transaction.Type = "Quote" AND Amount > 1000'
                 style={{ marginLeft: '8px' }}
               />
+            </label>
+
+            <label style={{ flex: '1 1 45%' }}>
+              Module Name
+              <input
+                className="toolbar-input"
+                value={selectedData.moduleName ?? ''}
+                onChange={(e) => updateNodeData('moduleName', e.target.value)}
+                placeholder="@cogitate/core-pos-components"
+              />
+            </label>
+
+            <label style={{ flex: '1 1 45%' }}>
+              Condition
+              <input
+                className="toolbar-input"
+                value={selectedData.condition ?? ''}
+                onChange={(e) => updateNodeData('condition', e.target.value)}
+                placeholder="Transaction.Type = 'Application'"
+              />
+            </label>
+
+            <label style={{ flex: '1 1 45%' }}>
+              Path
+              <input
+                className="toolbar-input"
+                value={selectedData.path ?? ''}
+                onChange={(e) => updateNodeData('path', e.target.value)}
+                placeholder="COGITATE/configs/Personal/HO3/hooksCall/property.js"
+              />
+            </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '0 0 auto' }}>
+              <input
+                type="checkbox"
+                checked={selectedData.isEndpoint ?? false}
+                onChange={(e) => updateNodeData('isEndpoint', e.target.checked)}
+              />
+              Is Endpoint
+            </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '0 0 auto' }}>
+              <input
+                type="checkbox"
+                checked={selectedData.callFunction !== false}
+                onChange={(e) => updateNodeData('callFunction', e.target.checked)}
+              />
+              Call Function
             </label>
           </div>
         )}
@@ -275,6 +431,27 @@ function WorkflowCanvas() {
             />
           </div>
         </div>
+
+        {bottomPanel === 'schema' && (
+          <div className="schema-panel">
+            <label htmlFor="hook-schema">Hook Schema JSON</label>
+            <textarea
+              id="hook-schema"
+              value={serializedSchema}
+              onChange={(event) => setSerializedSchema(event.target.value)}
+              placeholder="Export schema to edit or paste existing schema for import..."
+            />
+          </div>
+        )}
+
+        {bottomPanel === 'logs' && (
+          <ExecutionLogs
+            logs={engine.logs}
+            executionState={engine.state}
+            progress={engine.progress}
+            onClear={handleReset}
+          />
+        )}
       </div>
     </div>
   );

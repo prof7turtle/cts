@@ -1,6 +1,8 @@
 import type { Edge, Node } from '@xyflow/react';
 import { nodeDefinitionByType } from './nodes/nodeTypes';
 
+// ─── Exported Types ─────────────────────────────────────────────
+
 export interface HookAction {
   FunctionName: string;
   ModuleName: string;
@@ -26,7 +28,9 @@ export interface HookConfig {
   };
 }
 
-interface BuilderNodeData {
+// ─── Builder Node Data ──────────────────────────────────────────
+
+export interface BuilderNodeData {
   label?: string;
   condition?: string | Record<string, unknown>;
 }
@@ -104,6 +108,74 @@ function buildAction(node: Node, path: BranchPath): HookAction {
   };
 }
 
+function getRequestName(node: Node): string {
+  const definition = nodeDefinitionByType[node.type ?? ''];
+  const data = (node.data ?? {}) as BuilderNodeData;
+
+  return (
+    data.requestName ??
+    definition?.defaultData?.requestName ??
+    (definition?.category === 'Post Hook'
+      ? DEFAULT_POST_REQUEST
+      : DEFAULT_PRE_REQUEST)
+  );
+}
+
+function getNeedCascading(node: Node): boolean {
+  const data = (node.data ?? {}) as BuilderNodeData;
+  return data.needCascading !== false;
+}
+
+function getHookCallCascading(node: Node): boolean | undefined {
+  const data = (node.data ?? {}) as BuilderNodeData;
+  return data.hookCallCascading;
+}
+
+function getStaticParams(node: Node): Record<string, unknown> {
+  const data = (node.data ?? {}) as BuilderNodeData;
+  return data.staticParams ?? {};
+}
+
+/**
+ * Groups action nodes by their RequestName and builds HookEntry objects.
+ * Nodes sharing the same RequestName are grouped into a single entry.
+ */
+function groupNodesByRequestName(nodes: Node[]): HookEntry[] {
+  const entryMap = new Map<string, { nodes: Node[]; entry: Partial<HookEntry> }>();
+
+  for (const node of nodes) {
+    const requestName = getRequestName(node);
+
+    if (!entryMap.has(requestName)) {
+      entryMap.set(requestName, {
+        nodes: [],
+        entry: {
+          RequestName: requestName,
+          NeedCascading: getNeedCascading(node),
+          StaticParams: getStaticParams(node),
+        },
+      });
+
+      const cascading = getHookCallCascading(node);
+      if (cascading !== undefined) {
+        entryMap.get(requestName)!.entry.HookCallCascading = cascading;
+      }
+    }
+
+    entryMap.get(requestName)!.nodes.push(node);
+  }
+
+  return Array.from(entryMap.values()).map(({ nodes: groupedNodes, entry }) => ({
+    RequestName: entry.RequestName!,
+    NeedCascading: entry.NeedCascading ?? true,
+    ...(entry.HookCallCascading !== undefined
+      ? { HookCallCascading: entry.HookCallCascading }
+      : {}),
+    StaticParams: entry.StaticParams ?? {},
+    Actions: groupedNodes.map(buildAction),
+  }));
+}
+
 export function canvasToHookSchema(
   nodes: Node[],
   edges: Edge[],
@@ -170,34 +242,21 @@ export function canvasToHookSchema(
   return {
     Client: clientCode || 'YOUR_CLIENT_CODE',
     Hooks: {
-      Pre: [
-        {
-          RequestName: '/Quote/Landing',
-          NeedCascading: true,
-          HookCallCascading: true,
-          StaticParams: {},
-          Actions: preActions,
-        },
-      ],
-      Post: [
-        {
-          RequestName: '/Application/Summary',
-          NeedCascading: false,
-          StaticParams: {},
-          Actions: postActions,
-        },
-      ],
+      Pre: groupNodesByRequestName(preNodes),
+      Post: groupNodesByRequestName(postNodes),
     },
   };
 }
 
-function mapFunctionToNodeType(functionName: string) {
+// ─── HookSchema → Canvas ────────────────────────────────────────
+
+function mapFunctionToNodeType(functionName: string): string {
   const normalized = functionName.trim().toLowerCase();
   const matched = Object.values(nodeDefinitionByType).find(
     (definition) => definition.functionName.toLowerCase() === normalized
   );
 
-  return matched?.type ?? 'validatePolicy';
+  return matched?.type ?? 'generateQuoteNumber';
 }
 
 export function hookSchemaToCanvas(config: HookConfig): {
