@@ -212,6 +212,7 @@ function WorkflowCanvas() {
       const restored = hookSchemaToCanvas(parsed);
       setNodes(restored.nodes);
       setEdges(restored.edges);
+      setClientCode(parsed.Client || 'COGITATE');
       setSelectedNodeId(null);
       setSelectedEdgeId(null);
       setMessage('Canvas restored from hook schema.');
@@ -276,25 +277,25 @@ function WorkflowCanvas() {
       <div className="builder-main">
         <div className="builder-toolbar">
           <label>
-            Client
+            Client Code
             <input
               value={clientCode}
               onChange={(event) => setClientCode(event.target.value)}
               className="toolbar-input"
-              disabled={isExecuting}
+              placeholder="e.g., COGITATE"
             />
           </label>
-          <button type="button" onClick={deleteSelection} disabled={isExecuting}>
-            Delete Selection
-          </button>
           <button type="button" onClick={() => fitView({ padding: 0.2 })}>
             Fit View
           </button>
-          <button type="button" onClick={exportSchema}>
-            Export Hook Schema
+          <button type="button" onClick={deleteSelection}>
+            Delete
           </button>
-          <button type="button" onClick={importSchema} disabled={isExecuting}>
-            Import Hook Schema
+          <button type="button" onClick={exportSchema}>
+            Export Schema
+          </button>
+          <button type="button" onClick={importSchema}>
+            Import Schema
           </button>
           <button type="button" onClick={downloadSchema}>
             ⬇ Download JSON
@@ -332,20 +333,16 @@ function WorkflowCanvas() {
           {message && <span className="toolbar-message">{message}</span>}
         </div>
 
-        {/* ─── Node Property Panel ───────────────────────────── */}
-        {isActionNode && !isExecuting && (
-          <div className="condition-panel" style={{ flexWrap: 'wrap', gap: '8px' }}>
-            <div style={{ width: '100%', fontWeight: 'bold', marginBottom: '4px', fontSize: '13px' }}>
-              {selectedDef?.label ?? selectedNode?.type} — Properties
-            </div>
-
-            <label style={{ flex: '1 1 45%' }}>
-              Request Name
+        {selectedNode?.type === 'ifCondition' && (
+          <div className="condition-panel">
+            <label>
+              Condition Expression
               <input
                 className="toolbar-input"
-                value={selectedData.requestName ?? ''}
-                onChange={(e) => updateNodeData('requestName', e.target.value)}
-                placeholder="/Quote/Landing"
+                value={((selectedNode.data ?? {}) as BuilderNodeData).condition ?? ''}
+                onChange={(event) => updateCondition(event.target.value)}
+                placeholder='e.g., Transaction.Type = "Quote" AND Amount > 1000'
+                style={{ marginLeft: '8px' }}
               />
             </label>
 
@@ -399,49 +396,40 @@ function WorkflowCanvas() {
           </div>
         )}
 
-        <div ref={reactFlowWrapper} className="canvas-wrap">
-          <ReactFlow
-            nodes={displayNodes}
-            edges={edges}
-            onNodesChange={isExecuting ? undefined : onNodesChange}
-            onEdgesChange={isExecuting ? undefined : onEdgesChange}
-            onConnect={onConnect}
-            onDrop={onDrop}
-            onDragOver={onDragOver}
-            onSelectionChange={onSelectionChange}
-            nodeTypes={customNodeTypes}
-            fitView
-            nodesDraggable={!isExecuting}
-            nodesConnectable={!isExecuting}
-            elementsSelectable={!isExecuting}
-            deleteKeyCode={isExecuting ? [] : ['Backspace', 'Delete']}
-            defaultEdgeOptions={{
-              type: 'smoothstep',
-              markerEnd: { type: 'arrowclosed' },
-            }}
-          >
-            <MiniMap pannable zoomable />
-            <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-            <Controls showInteractive={false} />
-          </ReactFlow>
-        </div>
+        <div style={{ display: 'flex', gap: '0', flex: 1, minHeight: 0 }}>
+          <div ref={reactFlowWrapper} className="canvas-wrap" style={{ flex: '0 0 80%', borderRight: '1px solid #e5e7eb' }}>
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onDrop={onDrop}
+              onDragOver={onDragOver}
+              onSelectionChange={onSelectionChange}
+              nodeTypes={customNodeTypes}
+              fitView
+              deleteKeyCode={['Backspace', 'Delete']}
+              defaultEdgeOptions={{
+                type: 'smoothstep',
+                markerEnd: { type: 'arrowclosed' },
+              }}
+            >
+              <MiniMap pannable zoomable />
+              <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
+              <Controls showInteractive={false} />
+            </ReactFlow>
+          </div>
 
-        {/* ─── Bottom Panel: Schema / Logs Tab Switcher ─── */}
-        <div className="bottom-panel-tabs">
-          <button
-            type="button"
-            className={`bottom-panel-tab ${bottomPanel === 'logs' ? 'active' : ''}`}
-            onClick={() => setBottomPanel('logs')}
-          >
-            🖥 Execution Logs
-          </button>
-          <button
-            type="button"
-            className={`bottom-panel-tab ${bottomPanel === 'schema' ? 'active' : ''}`}
-            onClick={() => setBottomPanel('schema')}
-          >
-            📋 Hook Schema JSON
-          </button>
+          <div className="schema-panel" style={{ flex: '0 0 20%' }}>
+            <label htmlFor="hook-schema">Schema Output</label>
+            <textarea
+              id="hook-schema"
+              value={serializedSchema}
+              onChange={(event) => setSerializedSchema(event.target.value)}
+              placeholder="Export schema here or paste to import..."
+            />
+          </div>
         </div>
 
         {bottomPanel === 'schema' && (
