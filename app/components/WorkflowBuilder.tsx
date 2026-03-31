@@ -185,6 +185,7 @@ function WorkflowCanvas() {
       const restored = hookSchemaToCanvas(parsed);
       setNodes(restored.nodes);
       setEdges(restored.edges);
+      setClientCode(parsed.Client || 'COGITATE');
       setSelectedNodeId(null);
       setSelectedEdgeId(null);
       setMessage('Canvas restored from hook schema.');
@@ -201,24 +202,25 @@ function WorkflowCanvas() {
       <div className="builder-main">
         <div className="builder-toolbar">
           <label>
-            Client
+            Client Code
             <input
               value={clientCode}
               onChange={(event) => setClientCode(event.target.value)}
               className="toolbar-input"
+              placeholder="e.g., COGITATE"
             />
           </label>
-          <button type="button" onClick={deleteSelection}>
-            Delete Selection
-          </button>
           <button type="button" onClick={() => fitView({ padding: 0.2 })}>
             Fit View
           </button>
+          <button type="button" onClick={deleteSelection}>
+            Delete
+          </button>
           <button type="button" onClick={exportSchema}>
-            Export Hook Schema
+            Export Schema
           </button>
           <button type="button" onClick={importSchema}>
-            Import Hook Schema
+            Import Schema
           </button>
           {message && <span className="toolbar-message">{message}</span>}
         </div>
@@ -226,49 +228,52 @@ function WorkflowCanvas() {
         {selectedNode?.type === 'ifCondition' && (
           <div className="condition-panel">
             <label>
-              Decision Condition (plain language)
+              Condition Expression
               <input
                 className="toolbar-input"
                 value={((selectedNode.data ?? {}) as BuilderNodeData).condition ?? ''}
                 onChange={(event) => updateCondition(event.target.value)}
-                placeholder="Transaction.Type = 'Application' and isMaster = true"
+                placeholder='e.g., Transaction.Type = "Quote" AND Amount > 1000'
+                style={{ marginLeft: '8px' }}
               />
             </label>
           </div>
         )}
 
-        <div ref={reactFlowWrapper} className="canvas-wrap">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onDrop={onDrop}
-            onDragOver={onDragOver}
-            onSelectionChange={onSelectionChange}
-            nodeTypes={customNodeTypes}
-            fitView
-            deleteKeyCode={['Backspace', 'Delete']}
-            defaultEdgeOptions={{
-              type: 'smoothstep',
-              markerEnd: { type: 'arrowclosed' },
-            }}
-          >
-            <MiniMap pannable zoomable />
-            <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-            <Controls showInteractive={false} />
-          </ReactFlow>
-        </div>
+        <div style={{ display: 'flex', gap: '0', flex: 1, minHeight: 0 }}>
+          <div ref={reactFlowWrapper} className="canvas-wrap" style={{ flex: '0 0 80%', borderRight: '1px solid #e5e7eb' }}>
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onDrop={onDrop}
+              onDragOver={onDragOver}
+              onSelectionChange={onSelectionChange}
+              nodeTypes={customNodeTypes}
+              fitView
+              deleteKeyCode={['Backspace', 'Delete']}
+              defaultEdgeOptions={{
+                type: 'smoothstep',
+                markerEnd: { type: 'arrowclosed' },
+              }}
+            >
+              <MiniMap pannable zoomable />
+              <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
+              <Controls showInteractive={false} />
+            </ReactFlow>
+          </div>
 
-        <div className="schema-panel">
-          <label htmlFor="hook-schema">Hook Schema JSON</label>
-          <textarea
-            id="hook-schema"
-            value={serializedSchema}
-            onChange={(event) => setSerializedSchema(event.target.value)}
-            placeholder="Export schema to edit or paste existing schema for import..."
-          />
+          <div className="schema-panel" style={{ flex: '0 0 20%' }}>
+            <label htmlFor="hook-schema">Schema Output</label>
+            <textarea
+              id="hook-schema"
+              value={serializedSchema}
+              onChange={(event) => setSerializedSchema(event.target.value)}
+              placeholder="Export schema here or paste to import..."
+            />
+          </div>
         </div>
       </div>
     </div>
