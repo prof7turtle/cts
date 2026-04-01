@@ -49,7 +49,9 @@ function BaseNode({ data, selected, type }: NodeProps) {
   const label = typedData.label ?? definition?.label ?? type ?? 'Action';
   const isDecision = type === 'ifCondition';
   const condition =
-    typedData.condition ?? "Transaction.Type = 'Application'";
+    typeof typedData.condition === 'string'
+      ? typedData.condition
+      : "Transaction.Type = 'Application'";
 
   const execClass = getExecClassName(typedData.executionStatus);
 
