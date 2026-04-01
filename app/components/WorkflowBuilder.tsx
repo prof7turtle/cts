@@ -70,14 +70,12 @@ function WorkflowCanvas() {
   const { screenToFlowPosition, fitView } = useReactFlow();
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
 
-  // ─── Execution Engine ──────────────────────────────────────
   const nodesRef = useCallback(() => nodes, [nodes]);
   const edgesRef = useCallback(() => edges, [edges]);
   const engine = useExecutionEngine(nodesRef, edgesRef);
 
   const isExecuting = engine.state === 'running' || engine.state === 'paused';
 
-  // Inject execution status into node data for visual highlighting
   const displayNodes = useMemo(() => {
     if (Object.keys(engine.nodeStatuses).length === 0) return nodes;
 
@@ -104,7 +102,7 @@ function WorkflowCanvas() {
           ...edge,
           label: branchLabel ?? edge.label,
           labelStyle: branchLabel
-            ? { fontSize: 10, fontWeight: 700, fill: '#64748b' }
+            ? { fontSize: 10, fontWeight: 600, fill: '#64748b' }
             : edge.labelStyle,
         };
       }
@@ -113,20 +111,20 @@ function WorkflowCanvas() {
         return {
           ...edge,
           animated: true,
-          style: { ...(edge.style ?? {}), stroke: '#16a34a', strokeWidth: 3.5 },
+          style: { ...(edge.style ?? {}), stroke: '#16a34a', strokeWidth: 2.5 },
           className: `${edge.className ?? ''} edge-exec-active`.trim(),
           label: branchLabel ?? edge.label,
-          labelStyle: { fontSize: 10, fontWeight: 700, fill: '#166534' },
+          labelStyle: { fontSize: 10, fontWeight: 600, fill: '#166534' },
         };
       }
 
       return {
         ...edge,
         animated: false,
-        style: { ...(edge.style ?? {}), stroke: '#22c55e', strokeWidth: 3 },
+        style: { ...(edge.style ?? {}), stroke: '#22c55e', strokeWidth: 2 },
         className: `${edge.className ?? ''} edge-exec-completed`.trim(),
         label: branchLabel ?? edge.label,
-        labelStyle: { fontSize: 10, fontWeight: 700, fill: '#166534' },
+        labelStyle: { fontSize: 10, fontWeight: 600, fill: '#166534' },
       };
     });
   }, [edges, engine.edgeStatuses]);
@@ -146,7 +144,8 @@ function WorkflowCanvas() {
             id: getEdgeId(),
             type: 'smoothstep',
             animated: false,
-            markerEnd: { type: 'arrowclosed' },
+            style: { stroke: '#cbd5e1', strokeWidth: 1.5 },
+            markerEnd: { type: 'arrowclosed', color: '#94a3b8', width: 12, height: 12 },
           },
           currentEdges
         )
@@ -182,7 +181,6 @@ function WorkflowCanvas() {
       let node: Node;
 
       if (type.startsWith('customHook-')) {
-        // Handle custom hook
         const hookData = draggedHookData;
         if (!hookData) return;
 
@@ -203,10 +201,9 @@ function WorkflowCanvas() {
             condition: hookData.condition,
             callFunction: true,
             isEndpoint: false,
-          } satisfies BuilderNodeData,
+          } as Node['data'],
         };
       } else {
-        // Handle regular node
         const definition = nodeDefinitionByType[type];
         node = {
           id: getNodeId(),
@@ -260,7 +257,6 @@ function WorkflowCanvas() {
     }
   }, [selectedEdgeId, selectedNodeId, setEdges, setNodes, isExecuting]);
 
-  // ─── Generic node data updater ──────────────────────────────────
   const updateNodeData = useCallback(
     (field: keyof BuilderNodeData, value: string | boolean | undefined) => {
       if (!selectedNodeId || isExecuting) return;
@@ -284,7 +280,6 @@ function WorkflowCanvas() {
     [updateNodeData]
   );
 
-  // ─── Export / Import / Download ─────────────────────────────────
   const exportSchema = useCallback(() => {
     const schema = canvasToHookSchema(nodes, edges, clientCode);
     setSerializedSchema(JSON.stringify(schema, null, 2));
@@ -323,11 +318,9 @@ function WorkflowCanvas() {
     setMessage(`Downloaded hook-schema-${clientCode.toLowerCase()}.json`);
   }, [clientCode, edges, nodes]);
 
-  // ─── Execution handlers ─────────────────────────────────────────
   const handleRun = useCallback(() => {
     engine.reset();
     setBottomPanel('logs');
-    // Small delay to ensure reset completes before run
     setTimeout(() => engine.run(), 50);
   }, [engine]);
 
@@ -347,145 +340,157 @@ function WorkflowCanvas() {
     engine.reset();
   }, [engine]);
 
-  // ─── Helpers ────────────────────────────────────────────────────
-  const isActionNode =
-    selectedNode &&
-    selectedNode.type !== 'start' &&
-    selectedNode.type !== 'end';
-
   const selectedData = (selectedNode?.data ?? {}) as BuilderNodeData;
   const selectedCondition =
     typeof selectedData.condition === 'string' ? selectedData.condition : '';
-  const selectedDef = nodeDefinitionByType[selectedNode?.type ?? ''];
+
+  const toolbarBtn =
+    'inline-flex min-h-[40px] items-center justify-center rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 text-[13px] font-semibold leading-snug tracking-tight text-slate-700 shadow-sm ring-1 ring-slate-900/[0.03] transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50/90 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 active:translate-y-0';
 
   return (
     <div className="builder-layout">
       <NodesPanel onDragStart={onDragStart} />
 
       <div className="builder-main">
-        <div className="builder-toolbar">
-          <label>
-            Client Code
-            <input
-              value={clientCode}
-              onChange={(event) => setClientCode(event.target.value)}
-              className="toolbar-input"
-              placeholder="e.g., COGITATE"
-            />
-          </label>
-          <button type="button" onClick={() => fitView({ padding: 0.2 })}>
-            Fit View
-          </button>
-          <button type="button" onClick={deleteSelection}>
-            Delete
-          </button>
-          <button type="button" onClick={exportSchema}>
-            Export Schema
-          </button>
-          <button type="button" onClick={importSchema}>
-            Import Schema
-          </button>
-          <button type="button" onClick={downloadSchema}>
-            ⬇ Download JSON
-          </button>
-
-          {/* ─── Execution Controls ─────────────────────────── */}
-          <div style={{ borderLeft: '1px solid #c9d7ea', paddingLeft: '8px', marginLeft: '4px', display: 'flex', gap: '4px' }}>
-            {engine.state !== 'running' && engine.state !== 'paused' && (
-              <button type="button" className="exec-btn exec-btn-run" onClick={handleRun}>
-                ▶ Run
-              </button>
-            )}
-            {engine.state === 'running' && (
-              <button type="button" className="exec-btn exec-btn-pause" onClick={handlePause}>
-                ⏸ Pause
-              </button>
-            )}
-            {engine.state === 'paused' && (
-              <button type="button" className="exec-btn exec-btn-run" onClick={handleResume}>
-                ▶ Resume
-              </button>
-            )}
-            {isExecuting && (
-              <button type="button" className="exec-btn exec-btn-stop" onClick={handleStop}>
-                ⏹ Stop
-              </button>
-            )}
-            {(engine.state === 'completed' || engine.state === 'error') && (
-              <button type="button" className="exec-btn exec-btn-reset" onClick={handleReset}>
-                ↺ Reset
-              </button>
-            )}
-          </div>
-
-          {message && <span className="toolbar-message">{message}</span>}
-        </div>
-
-        {selectedNode?.type === 'ifCondition' && (
-          <div className="condition-panel">
-            <label>
-              Condition Expression
+        <div className="builder-toolbar flex flex-wrap items-center gap-4 border-b border-slate-200/90 bg-white px-6 py-4 shadow-[0_4px_24px_-12px_rgba(15,23,42,0.06)]">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-4">
+            <label className="flex min-w-[180px] items-center gap-3 text-[13px] font-semibold text-slate-600">
+              Client code
               <input
-                className="toolbar-input"
-                value={selectedCondition}
-                onChange={(event) => updateCondition(event.target.value)}
-                placeholder='e.g., Transaction.Type = "Quote" AND Amount > 1000'
-                style={{ marginLeft: '8px' }}
+                value={clientCode}
+                onChange={(event) => setClientCode(event.target.value)}
+                className="toolbar-input min-w-[120px] flex-1"
+                placeholder="e.g., COGITATE"
               />
             </label>
 
-            <label style={{ flex: '1 1 45%' }}>
-              Module Name
+            <div className="hidden h-6 w-px bg-slate-200 sm:block" aria-hidden />
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" className={toolbarBtn} onClick={() => fitView({ padding: 0.2 })}>
+                Fit view
+              </button>
+              <button type="button" className={toolbarBtn} onClick={deleteSelection}>
+                Delete
+              </button>
+              <button type="button" className={toolbarBtn} onClick={exportSchema}>
+                Export schema
+              </button>
+              <button type="button" className={toolbarBtn} onClick={importSchema}>
+                Import schema
+              </button>
+              <button type="button" className={toolbarBtn} onClick={downloadSchema}>
+                Download JSON
+              </button>
+            </div>
+
+            <div className="hidden h-6 w-px bg-slate-200 lg:block" aria-hidden />
+
+            <div className="flex flex-wrap items-center gap-1.5 border-slate-200 lg:border-l lg:pl-3">
+              {engine.state !== 'running' && engine.state !== 'paused' && (
+                <button type="button" className="exec-btn exec-btn-run" onClick={handleRun}>
+                  Run
+                </button>
+              )}
+              {engine.state === 'running' && (
+                <button type="button" className="exec-btn exec-btn-pause" onClick={handlePause}>
+                  Pause
+                </button>
+              )}
+              {engine.state === 'paused' && (
+                <button type="button" className="exec-btn exec-btn-run" onClick={handleResume}>
+                  Resume
+                </button>
+              )}
+              {isExecuting && (
+                <button type="button" className="exec-btn exec-btn-stop" onClick={handleStop}>
+                  Stop
+                </button>
+              )}
+              {(engine.state === 'completed' || engine.state === 'error') && (
+                <button type="button" className="exec-btn exec-btn-reset" onClick={handleReset}>
+                  Reset
+                </button>
+              )}
+            </div>
+          </div>
+
+          {message && (
+            <span className="toolbar-message max-w-full shrink-0 truncate rounded-lg border border-blue-100 bg-blue-50/90 px-3 py-2 text-xs font-medium leading-snug text-[#1d4ed8]">
+              {message}
+            </span>
+          )}
+        </div>
+
+        {selectedNode?.type === 'ifCondition' && (
+          <div className="condition-panel flex flex-wrap items-end gap-4">
+            <label className="flex min-w-[200px] flex-1 flex-col gap-2 text-xs font-semibold text-amber-900/90">
+              Condition expression
               <input
-                className="toolbar-input"
+                className="toolbar-input w-full"
+                value={selectedCondition}
+                onChange={(event) => updateCondition(event.target.value)}
+                placeholder='e.g., Transaction.Type = "Quote" AND Amount > 1000'
+              />
+            </label>
+
+            <label className="flex min-w-[180px] flex-1 flex-col gap-2 text-xs font-semibold text-amber-900/90">
+              Module name
+              <input
+                className="toolbar-input w-full"
                 value={selectedData.moduleName ?? ''}
                 onChange={(e) => updateNodeData('moduleName', e.target.value)}
                 placeholder="@cogitate/core-pos-components"
               />
             </label>
 
-            <label style={{ flex: '1 1 45%' }}>
+            <label className="flex min-w-[180px] flex-1 flex-col gap-2 text-xs font-semibold text-amber-900/90">
               Condition
               <input
-                className="toolbar-input"
+                className="toolbar-input w-full"
                 value={selectedCondition}
                 onChange={(e) => updateNodeData('condition', e.target.value)}
                 placeholder="Transaction.Type = 'Application'"
               />
             </label>
 
-            <label style={{ flex: '1 1 45%' }}>
+            <label className="flex min-w-[200px] flex-[2] flex-col gap-2 text-xs font-semibold text-amber-900/90">
               Path
               <input
-                className="toolbar-input"
+                className="toolbar-input w-full"
                 value={selectedData.path ?? ''}
                 onChange={(e) => updateNodeData('path', e.target.value)}
                 placeholder="COGITATE/configs/Personal/HO3/hooksCall/property.js"
               />
             </label>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '0 0 auto' }}>
+            <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-amber-900/90">
               <input
                 type="checkbox"
+                className="h-4 w-4 rounded border-amber-300 text-[#1d4ed8] focus:ring-[#1d4ed8]"
                 checked={selectedData.isEndpoint ?? false}
                 onChange={(e) => updateNodeData('isEndpoint', e.target.checked)}
               />
-              Is Endpoint
+              Is endpoint
             </label>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '0 0 auto' }}>
+            <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-amber-900/90">
               <input
                 type="checkbox"
+                className="h-4 w-4 rounded border-amber-300 text-[#1d4ed8] focus:ring-[#1d4ed8]"
                 checked={selectedData.callFunction !== false}
                 onChange={(e) => updateNodeData('callFunction', e.target.checked)}
               />
-              Call Function
+              Call function
             </label>
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: '0', flex: 1, minHeight: 0 }}>
-          <div ref={reactFlowWrapper} className="canvas-wrap" style={{ flex: '0 0 80%', borderRight: '1px solid #e5e7eb' }}>
+        <div className="flex min-h-0 flex-1">
+          <div
+            ref={reactFlowWrapper}
+            className="canvas-wrap min-w-0 flex-[0_0_80%] border-r border-slate-200"
+          >
             <ReactFlow
               nodes={displayNodes}
               edges={displayEdges}
@@ -500,19 +505,36 @@ function WorkflowCanvas() {
               deleteKeyCode={['Backspace', 'Delete']}
               defaultEdgeOptions={{
                 type: 'smoothstep',
-                markerEnd: { type: 'arrowclosed' },
+                style: { stroke: '#cbd5e1', strokeWidth: 1.5 },
+                markerEnd: { type: 'arrowclosed', color: '#94a3b8', width: 12, height: 12 },
               }}
             >
-              <MiniMap pannable zoomable />
-              <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-              <Controls showInteractive={false} />
+              <MiniMap
+                className="!rounded-lg !border !border-slate-200 !bg-white !shadow-md"
+                pannable
+                zoomable
+              />
+              <Background
+                variant={BackgroundVariant.Dots}
+                gap={20}
+                size={1}
+                color="#cbd5e1"
+                bgColor="#f1f5f9"
+                className="opacity-80"
+              />
+              <Controls
+                showInteractive={false}
+                className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-md [&_button]:border-slate-200 [&_button]:bg-white [&_button]:fill-slate-600 [&_button:hover]:bg-slate-50"
+              />
             </ReactFlow>
           </div>
 
-          <div className="schema-panel" style={{ flex: '0 0 20%' }}>
-            <label htmlFor="hook-schema">Schema Output</label>
+          <div className="schema-panel min-w-0 flex-[0_0_20%]">
+            <label htmlFor="hook-schema-side" className="text-xs font-semibold text-slate-700">
+              Schema output
+            </label>
             <textarea
-              id="hook-schema"
+              id="hook-schema-side"
               value={serializedSchema}
               onChange={(event) => setSerializedSchema(event.target.value)}
               placeholder="Export schema here or paste to import..."

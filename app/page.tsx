@@ -8,57 +8,41 @@ export default function HomePage() {
   const [view, setView] = useState<'list' | 'builder'>('list');
 
   return (
-    <div style={{ height: '100vh', overflow: 'hidden', backgroundColor: '#f9f9f9' }}>
-      {/* Navigation Header */}
+    <div className="flex h-[calc(100vh-3.75rem)] min-h-0 flex-col">
       <nav
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '20px',
-          padding: '16px 20px',
-          backgroundColor: '#ffffff',
-          borderBottom: '1px solid #e0e0e0',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-          flexShrink: 0,
-        }}
+        className="flex shrink-0 flex-col gap-4 border-b border-slate-200/90 bg-white/95 px-5 py-4 shadow-[inset_0_-1px_0_rgba(15,23,42,0.04)] backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:px-8"
+        aria-label="Primary"
       >
-        <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#0066cc' }}>
-          🏗️ Workflow Builder POC
-        </div>
-        <div style={{ display: 'flex', gap: '12px', marginLeft: 'auto' }}>
+        <p className="max-w-md text-[15px] leading-relaxed text-slate-600">
+          Design and manage policy automation workflows
+        </p>
+        <div className="inline-flex shrink-0 rounded-xl border border-slate-200/90 bg-slate-100/90 p-1 shadow-inner">
           <button
+            type="button"
             onClick={() => setView('list')}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: view === 'list' ? '#0066cc' : '#e0e0e0',
-              color: view === 'list' ? 'white' : 'black',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontWeight: view === 'list' ? 'bold' : 'normal',
-            }}
+            className={`rounded-lg px-5 py-2 text-sm font-semibold tracking-tight transition-all duration-200 ${
+              view === 'list'
+                ? 'bg-white text-blue-700 shadow-md shadow-slate-200/80 ring-1 ring-slate-200/60'
+                : 'text-slate-600 hover:bg-white/60 hover:text-slate-900'
+            }`}
           >
             Workflows
           </button>
           <button
+            type="button"
             onClick={() => setView('builder')}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: view === 'builder' ? '#0066cc' : '#e0e0e0',
-              color: view === 'builder' ? 'white' : 'black',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontWeight: view === 'builder' ? 'bold' : 'normal',
-            }}
+            className={`rounded-lg px-5 py-2 text-sm font-semibold tracking-tight transition-all duration-200 ${
+              view === 'builder'
+                ? 'bg-white text-blue-700 shadow-md shadow-slate-200/80 ring-1 ring-slate-200/60'
+                : 'text-slate-600 hover:bg-white/60 hover:text-slate-900'
+            }`}
           >
             Builder
           </button>
         </div>
       </nav>
 
-      {/* Content */}
-      <div style={{ height: 'calc(100vh - 70px)', overflow: 'hidden' }}>
+      <div className="min-h-0 flex-1 overflow-hidden">
         {view === 'list' ? <WorkflowList /> : <WorkflowBuilder />}
       </div>
     </div>

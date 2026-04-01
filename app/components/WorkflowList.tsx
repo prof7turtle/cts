@@ -12,11 +12,44 @@ interface WorkflowListItem {
   updatedAt: string;
 }
 
+function StatusBadge({ status }: { status: string }) {
+  const key = status.toUpperCase();
+  const styles: Record<string, string> = {
+    ACTIVE: 'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200',
+    PUBLISHED: 'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200',
+    DRAFT: 'bg-amber-50 text-amber-900 ring-1 ring-inset ring-amber-200',
+    ARCHIVED: 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200',
+  };
+  const s =
+    styles[key] ?? 'bg-blue-50 text-blue-800 ring-1 ring-inset ring-blue-200';
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${s}`}
+    >
+      {status}
+    </span>
+  );
+}
+
+const btnBase =
+  'inline-flex items-center justify-center rounded-lg text-xs font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1d4ed8]';
+
+const btnEdit = `${btnBase} border border-blue-200 bg-blue-50 px-3 py-1.5 text-blue-800 hover:border-blue-300 hover:bg-blue-100`;
+const btnDuplicate = `${btnBase} border border-slate-200 bg-slate-50 px-3 py-1.5 text-slate-700 hover:border-slate-300 hover:bg-slate-100`;
+const btnArchive = `${btnBase} border border-amber-200 bg-amber-50 px-3 py-1.5 text-amber-900 hover:border-amber-300 hover:bg-amber-100`;
+const btnDelete = `${btnBase} border border-red-200 bg-red-50 px-3 py-1.5 text-red-700 hover:border-red-300 hover:bg-red-100`;
+const btnPublish = `${btnBase} border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-emerald-800 hover:border-emerald-300 hover:bg-emerald-100`;
+
 export default function WorkflowList() {
   const [workflows, setWorkflows] = useState<WorkflowListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<{
+    totalWorkflows?: number;
+    publishedWorkflows?: number;
+    draftWorkflows?: number;
+    totalNodes?: number;
+  } | null>(null);
   const [selectedWorkflow, setSelectedWorkflow] = useState<string | null>(null);
 
   useEffect(() => {
@@ -30,8 +63,8 @@ export default function WorkflowList() {
       setError(null);
       const result = await workflowActions.fetchWorkflows(1, 10);
       setWorkflows(result.workflows);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load workflows');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load workflows');
     } finally {
       setLoading(false);
     }
@@ -39,10 +72,10 @@ export default function WorkflowList() {
 
   const loadStats = async () => {
     try {
-      const stats = await workflowActions.fetchWorkflowStats();
-      setStats(stats);
-    } catch (err: any) {
-      console.error('Failed to load stats:', err.message);
+      const s = await workflowActions.fetchWorkflowStats();
+      setStats(s);
+    } catch (err: unknown) {
+      console.error('Failed to load stats:', err instanceof Error ? err.message : err);
     }
   };
 
@@ -55,11 +88,11 @@ export default function WorkflowList() {
       );
 
       if (result.success && result.workflow) {
-        setWorkflows([...workflows, result.workflow as any]);
+        setWorkflows([...workflows, result.workflow as WorkflowListItem]);
         loadStats();
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to create workflow');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to create workflow');
     }
   };
 
@@ -68,17 +101,13 @@ export default function WorkflowList() {
       const result = await workflowActions.publishWorkflow(id);
 
       if (result.success) {
-        setWorkflows(
-          workflows.map((w) =>
-            w.id === id ? { ...w, status: 'PUBLISHED' } : w
-          )
-        );
+        setWorkflows(workflows.map((w) => (w.id === id ? { ...w, status: 'PUBLISHED' } : w)));
         loadStats();
       } else {
         setError(result.errors?.join(', ') || 'Failed to publish workflow');
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to publish workflow');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to publish workflow');
     }
   };
 
@@ -87,15 +116,11 @@ export default function WorkflowList() {
       const result = await workflowActions.archiveWorkflow(id);
 
       if (result.success) {
-        setWorkflows(
-          workflows.map((w) =>
-            w.id === id ? { ...w, status: 'ARCHIVED' } : w
-          )
-        );
+        setWorkflows(workflows.map((w) => (w.id === id ? { ...w, status: 'ARCHIVED' } : w)));
         loadStats();
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to archive workflow');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to archive workflow');
     }
   };
 
@@ -104,11 +129,11 @@ export default function WorkflowList() {
       const result = await workflowActions.duplicateWorkflow(id);
 
       if (result.success && result.workflow) {
-        setWorkflows([...workflows, result.workflow as any]);
+        setWorkflows([...workflows, result.workflow as WorkflowListItem]);
         loadStats();
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to duplicate workflow');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to duplicate workflow');
     }
   };
 
@@ -122,323 +147,195 @@ export default function WorkflowList() {
         setWorkflows(workflows.filter((w) => w.id !== id));
         loadStats();
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to delete workflow');
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'PUBLISHED':
-        return 'bg-green-100 text-green-800';
-      case 'DRAFT':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'ARCHIVED':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-blue-100 text-blue-800';
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to delete workflow');
     }
   };
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
-      <h1>Workflow Management</h1>
-
-      {/* Stats */}
-      {stats && (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '20px',
-            marginBottom: '30px',
-          }}
-        >
-          <div
-            style={{
-              border: '1px solid #ddd',
-              borderRadius: '8px',
-              padding: '15px',
-              textAlign: 'center',
-            }}
-          >
-            <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
-              {stats.totalWorkflows}
-            </div>
-            <div style={{ fontSize: '14px', color: '#666' }}>
-              Total Workflows
-            </div>
+    <div className="h-full min-h-0 overflow-y-auto bg-[#f8fafc] px-8 py-6">
+      <div className="mx-auto max-w-6xl">
+        {/* 1. Header */}
+        <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-3xl font-bold tracking-tight text-[#1e293b]">
+              Workflows
+            </h1>
+            <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-[#64748b]">
+              Manage published and draft insurance policy workflows from one place.
+            </p>
           </div>
-          <div
-            style={{
-              border: '1px solid #ddd',
-              borderRadius: '8px',
-              padding: '15px',
-              textAlign: 'center',
-            }}
-          >
-            <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
-              {stats.publishedWorkflows}
-            </div>
-            <div style={{ fontSize: '14px', color: '#666' }}>Published</div>
-          </div>
-          <div
-            style={{
-              border: '1px solid #ddd',
-              borderRadius: '8px',
-              padding: '15px',
-              textAlign: 'center',
-            }}
-          >
-            <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
-              {stats.draftWorkflows}
-            </div>
-            <div style={{ fontSize: '14px', color: '#666' }}>Draft</div>
-          </div>
-          <div
-            style={{
-              border: '1px solid #ddd',
-              borderRadius: '8px',
-              padding: '15px',
-              textAlign: 'center',
-            }}
-          >
-            <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
-              {stats.totalNodes}
-            </div>
-            <div style={{ fontSize: '14px', color: '#666' }}>Total Nodes</div>
-          </div>
-        </div>
-      )}
-
-      {/* Create Workflow Button */}
-      <button
-        onClick={() => {
-          const name = prompt('Enter workflow name:');
-          if (name) handleCreateWorkflow(name);
-        }}
-        style={{
-          padding: '10px 20px',
-          marginBottom: '20px',
-          backgroundColor: '#0066cc',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-          cursor: 'pointer',
-        }}
-      >
-        Create Workflow
-      </button>
-
-      {/* Error Message */}
-      {error && (
-        <div
-          style={{
-            padding: '12px',
-            marginBottom: '20px',
-            backgroundColor: '#fee',
-            color: '#c00',
-            borderRadius: '4px',
-            border: '1px solid #fcc',
-          }}
-        >
-          {error}
-        </div>
-      )}
-
-      {/* Loading State */}
-      {loading && <p>Loading workflows...</p>}
-
-      {/* Workflows List */}
-      {!loading && workflows.length > 0 && (
-        <div>
-          <h2>Workflows ({workflows.length})</h2>
-          <div
-            style={{
-              border: '1px solid #ddd',
-              borderRadius: '8px',
-              overflow: 'hidden',
-            }}
-          >
-            <table
-              style={{
-                width: '100%',
-                borderCollapse: 'collapse',
+          {/* Primary action (aligned with header) */}
+          <div className="flex shrink-0 sm:justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                const name = prompt('Enter workflow name:');
+                if (name) handleCreateWorkflow(name);
               }}
+              className="inline-flex items-center justify-center rounded-xl border border-[#1d4ed8] bg-[#1d4ed8] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1d4ed8]"
             >
-              <thead>
-                <tr style={{ backgroundColor: '#f5f5f5' }}>
-                  <th
-                    style={{
-                      padding: '12px',
-                      textAlign: 'left',
-                      borderBottom: '1px solid #ddd',
-                    }}
-                  >
-                    Name
-                  </th>
-                  <th
-                    style={{
-                      padding: '12px',
-                      textAlign: 'left',
-                      borderBottom: '1px solid #ddd',
-                    }}
-                  >
-                    Status
-                  </th>
-                  <th
-                    style={{
-                      padding: '12px',
-                      textAlign: 'left',
-                      borderBottom: '1px solid #ddd',
-                    }}
-                  >
-                    Updated
-                  </th>
-                  <th
-                    style={{
-                      padding: '12px',
-                      textAlign: 'center',
-                      borderBottom: '1px solid #ddd',
-                    }}
-                  >
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {workflows.map((workflow) => (
-                  <tr
-                    key={workflow.id}
-                    style={{
-                      borderBottom: '1px solid #ddd',
-                      backgroundColor:
-                        selectedWorkflow === workflow.id ? '#f0f0f0' : '',
-                    }}
-                  >
-                    <td style={{ padding: '12px' }}>
-                      <strong>{workflow.name}</strong>
-                      <br />
-                      <small style={{ color: '#666' }}>
-                        {workflow.description}
-                      </small>
-                    </td>
-                    <td style={{ padding: '12px' }}>
-                      <span
-                        style={{
-                          padding: '4px 8px',
-                          borderRadius: '4px',
-                        }}
-                        className={getStatusColor(workflow.status)}
-                      >
-                        {workflow.status}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px', color: '#666' }}>
-                      {new Date(workflow.updatedAt).toLocaleDateString()}
-                    </td>
-                    <td
-                      style={{
-                        padding: '12px',
-                        textAlign: 'center',
-                      }}
-                    >
-                      <button
-                        onClick={() => setSelectedWorkflow(workflow.id)}
-                        style={{
-                          padding: '4px 8px',
-                          marginRight: '4px',
-                          backgroundColor: '#0066cc',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                        }}
-                      >
-                        Edit
-                      </button>
-
-                      {workflow.status === 'DRAFT' && (
-                        <button
-                          onClick={() => handlePublish(workflow.id)}
-                          style={{
-                            padding: '4px 8px',
-                            marginRight: '4px',
-                            backgroundColor: '#22aa22',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '12px',
-                          }}
-                        >
-                          Publish
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() => handleDuplicate(workflow.id)}
-                        style={{
-                          padding: '4px 8px',
-                          marginRight: '4px',
-                          backgroundColor: '#ff9900',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                        }}
-                      >
-                        Duplicate
-                      </button>
-
-                      {workflow.status !== 'ARCHIVED' && (
-                        <button
-                          onClick={() => handleArchive(workflow.id)}
-                          style={{
-                            padding: '4px 8px',
-                            marginRight: '4px',
-                            backgroundColor: '#9999aa',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '12px',
-                          }}
-                        >
-                          Archive
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() => handleDelete(workflow.id)}
-                        style={{
-                          padding: '4px 8px',
-                          backgroundColor: '#cc0000',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              Create workflow
+            </button>
           </div>
-        </div>
-      )}
+        </header>
 
-      {!loading && workflows.length === 0 && (
-        <p style={{ textAlign: 'center', color: '#666', padding: '40px' }}>
-          No workflows found. Create one to get started!
-        </p>
-      )}
+        {/* 2. Stats */}
+        {stats && (
+          <section className="mb-6" aria-label="Workflow statistics">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                { label: 'Total workflows', value: stats.totalWorkflows ?? 0 },
+                { label: 'Published', value: stats.publishedWorkflows ?? 0 },
+                { label: 'Draft', value: stats.draftWorkflows ?? 0 },
+                { label: 'Total nodes', value: stats.totalNodes ?? 0 },
+              ].map((card) => (
+                <div
+                  key={card.label}
+                  className="rounded-xl border border-[#e2e8f0] bg-[#ffffff] p-5 shadow-sm transition-shadow duration-200 hover:shadow-md"
+                >
+                  <p className="text-3xl font-semibold tabular-nums tracking-tight text-[#1e293b]">
+                    {card.value}
+                  </p>
+                  <p className="mt-2 text-sm font-medium text-[#64748b]">{card.label}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div
+            className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+            role="alert"
+          >
+            {error}
+          </div>
+        )}
+
+        {/* Loading */}
+        {loading && (
+          <div className="mb-6 rounded-xl border border-[#e2e8f0] bg-[#ffffff] p-12 text-center shadow-sm">
+            <p className="text-sm font-medium text-[#64748b]">Loading workflows…</p>
+          </div>
+        )}
+
+        {/* 3. Table (card with padding) */}
+        {!loading && workflows.length > 0 && (
+          <section
+            aria-label="Workflow list"
+            className="rounded-xl border border-[#e2e8f0] bg-[#ffffff] p-6 shadow-sm"
+          >
+            <div className="mb-6 flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+              <h2 className="text-lg font-semibold text-[#1e293b]">
+                All workflows
+                <span className="ml-2 text-base font-normal text-[#64748b]">
+                  ({workflows.length})
+                </span>
+              </h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+                <thead>
+                  <tr className="border-b border-[#e2e8f0]">
+                    <th className="whitespace-nowrap py-3 pl-0 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[#64748b]">
+                      Name
+                    </th>
+                    <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#64748b]">
+                      Status
+                    </th>
+                    <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#64748b]">
+                      Updated
+                    </th>
+                    <th className="whitespace-nowrap py-3 pl-4 pr-0 text-right text-xs font-semibold uppercase tracking-wide text-[#64748b]">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#e2e8f0]">
+                  {workflows.map((workflow) => (
+                    <tr
+                      key={workflow.id}
+                      className={`transition-colors ${
+                        selectedWorkflow === workflow.id
+                          ? 'bg-slate-50'
+                          : 'hover:bg-slate-50/80'
+                      }`}
+                    >
+                      <td className="align-middle py-6 pl-0 pr-4">
+                        <span className="font-medium text-[#1e293b]">{workflow.name}</span>
+                        {workflow.description && (
+                          <span className="mt-1.5 block text-xs leading-relaxed text-[#64748b]">
+                            {workflow.description}
+                          </span>
+                        )}
+                      </td>
+                      <td className="align-middle px-4 py-6">
+                        <StatusBadge status={workflow.status} />
+                      </td>
+                      <td className="whitespace-nowrap align-middle px-4 py-6 text-[#64748b]">
+                        {new Date(workflow.updatedAt).toLocaleDateString()}
+                      </td>
+                      <td className="align-middle py-6 pl-4 pr-0">
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            className={btnEdit}
+                            onClick={() => setSelectedWorkflow(workflow.id)}
+                          >
+                            Edit
+                          </button>
+                          {workflow.status === 'DRAFT' && (
+                            <button
+                              type="button"
+                              className={btnPublish}
+                              onClick={() => handlePublish(workflow.id)}
+                            >
+                              Publish
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className={btnDuplicate}
+                            onClick={() => handleDuplicate(workflow.id)}
+                          >
+                            Duplicate
+                          </button>
+                          {workflow.status !== 'ARCHIVED' && (
+                            <button
+                              type="button"
+                              className={btnArchive}
+                              onClick={() => handleArchive(workflow.id)}
+                            >
+                              Archive
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className={btnDelete}
+                            onClick={() => handleDelete(workflow.id)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {!loading && workflows.length === 0 && (
+          <div className="rounded-xl border border-dashed border-[#e2e8f0] bg-[#ffffff] px-8 py-16 text-center shadow-sm">
+            <p className="text-sm font-medium text-[#64748b]">
+              No workflows found. Create one to get started.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
