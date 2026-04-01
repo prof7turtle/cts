@@ -80,6 +80,46 @@ function WorkflowCanvas() {
     });
   }, [nodes, engine.nodeStatuses]);
 
+  const displayEdges = useMemo(() => {
+    const hasEdgeExecutionState = Object.keys(engine.edgeStatuses).length > 0;
+
+    return edges.map((edge) => {
+      const execStatus = engine.edgeStatuses[edge.id];
+      const branchLabel =
+        edge.sourceHandle === 'yes' ? 'YES' : edge.sourceHandle === 'no' ? 'NO' : undefined;
+
+      if (!hasEdgeExecutionState || !execStatus || execStatus === 'idle') {
+        return {
+          ...edge,
+          label: branchLabel ?? edge.label,
+          labelStyle: branchLabel
+            ? { fontSize: 10, fontWeight: 700, fill: '#64748b' }
+            : edge.labelStyle,
+        };
+      }
+
+      if (execStatus === 'active') {
+        return {
+          ...edge,
+          animated: true,
+          style: { ...(edge.style ?? {}), stroke: '#16a34a', strokeWidth: 3.5 },
+          className: `${edge.className ?? ''} edge-exec-active`.trim(),
+          label: branchLabel ?? edge.label,
+          labelStyle: { fontSize: 10, fontWeight: 700, fill: '#166534' },
+        };
+      }
+
+      return {
+        ...edge,
+        animated: false,
+        style: { ...(edge.style ?? {}), stroke: '#22c55e', strokeWidth: 3 },
+        className: `${edge.className ?? ''} edge-exec-completed`.trim(),
+        label: branchLabel ?? edge.label,
+        labelStyle: { fontSize: 10, fontWeight: 700, fill: '#166534' },
+      };
+    });
+  }, [edges, engine.edgeStatuses]);
+
   const selectedNode = useMemo(
     () => nodes.find((node) => node.id === selectedNodeId) ?? null,
     [nodes, selectedNodeId]
@@ -198,6 +238,11 @@ function WorkflowCanvas() {
     [selectedNodeId, setNodes, isExecuting]
   );
 
+  const updateCondition = useCallback(
+    (value: string) => updateNodeData('condition', value),
+    [updateNodeData]
+  );
+
   // ─── Export / Import / Download ─────────────────────────────────
   const exportSchema = useCallback(() => {
     const schema = canvasToHookSchema(nodes, edges, clientCode);
@@ -268,6 +313,8 @@ function WorkflowCanvas() {
     selectedNode.type !== 'end';
 
   const selectedData = (selectedNode?.data ?? {}) as BuilderNodeData;
+  const selectedCondition =
+    typeof selectedData.condition === 'string' ? selectedData.condition : '';
   const selectedDef = nodeDefinitionByType[selectedNode?.type ?? ''];
 
   return (
@@ -339,7 +386,7 @@ function WorkflowCanvas() {
               Condition Expression
               <input
                 className="toolbar-input"
-                value={((selectedNode.data ?? {}) as BuilderNodeData).condition ?? ''}
+                value={selectedCondition}
                 onChange={(event) => updateCondition(event.target.value)}
                 placeholder='e.g., Transaction.Type = "Quote" AND Amount > 1000'
                 style={{ marginLeft: '8px' }}
@@ -360,7 +407,7 @@ function WorkflowCanvas() {
               Condition
               <input
                 className="toolbar-input"
-                value={selectedData.condition ?? ''}
+                value={selectedCondition}
                 onChange={(e) => updateNodeData('condition', e.target.value)}
                 placeholder="Transaction.Type = 'Application'"
               />
@@ -399,8 +446,8 @@ function WorkflowCanvas() {
         <div style={{ display: 'flex', gap: '0', flex: 1, minHeight: 0 }}>
           <div ref={reactFlowWrapper} className="canvas-wrap" style={{ flex: '0 0 80%', borderRight: '1px solid #e5e7eb' }}>
             <ReactFlow
-              nodes={nodes}
-              edges={edges}
+              nodes={displayNodes}
+              edges={displayEdges}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}

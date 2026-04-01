@@ -32,7 +32,13 @@ export interface HookConfig {
 
 export interface BuilderNodeData {
   label?: string;
+  color?: string;
   condition?: string | Record<string, unknown>;
+  moduleName?: string;
+  isEndpoint?: boolean;
+  callFunction?: boolean;
+  path?: string;
+  description?: string;
   requestName?: string;
   needCascading?: boolean;
   hookCallCascading?: boolean;
@@ -43,6 +49,7 @@ type BranchPath = '' | 'yes' | 'no';
 
 interface ActiveConditionState {
   id: string;
+  expression: string;
   yesTailId: string | null;
   noTailId: string | null;
   yesNextY: number;
@@ -81,15 +88,71 @@ function sortNodesByPosition(nodes: Node[]): Node[] {
 }
 
 function isConditionAction(action: HookAction): boolean {
-  const hasCondition =
-    typeof action.Condition === 'string'
-      ? action.Condition.trim().length > 0
-      : !!action.Condition;
-
-  return action.FunctionName.trim().toLowerCase() === 'evaluatecondition' || hasCondition;
+  return action.FunctionName.trim().toLowerCase() === 'evaluatecondition';
 }
 
-function buildAction(node: Node, path: BranchPath): HookAction {
+function asConditionExpression(
+  condition: string | Record<string, unknown> | undefined
+): string {
+  return typeof condition === 'string' ? condition.trim() : '';
+}
+
+function negateConditionExpression(condition: string): string {
+  const trimmed = condition.trim();
+  if (!trimmed) {
+    return '';
+  }
+  return `not(${trimmed})`;
+}
+
+function combineConditionExpressions(parts: string[]): string {
+  const normalizedParts = parts.map((part) => part.trim()).filter(Boolean);
+  if (normalizedParts.length === 0) {
+    return '';
+  }
+  if (normalizedParts.length === 1) {
+    return normalizedParts[0];
+  }
+  return normalizedParts.map((part) => `(${part})`).join(' and ');
+}
+
+function normalizeConditionText(expression: string): string {
+  return expression.replace(/\s+/g, '').toLowerCase();
+}
+
+function inferBranchPathFromCondition(
+  actionCondition: string | Record<string, unknown>,
+  ifExpression: string
+): BranchPath {
+  const branchCondition = asConditionExpression(actionCondition);
+  const conditionExpr = ifExpression.trim();
+  if (!branchCondition || !conditionExpr) {
+    return '';
+  }
+
+  const normalizedBranch = normalizeConditionText(branchCondition);
+  const normalizedIf = normalizeConditionText(conditionExpr);
+  const normalizedNotIf = normalizeConditionText(`not(${conditionExpr})`);
+
+  if (normalizedBranch === normalizedIf) {
+    return 'yes';
+  }
+  if (normalizedBranch === normalizedNotIf) {
+    return 'no';
+  }
+  if (normalizedBranch.includes(normalizedNotIf)) {
+    return 'no';
+  }
+  if (normalizedBranch.includes(normalizedIf)) {
+    return 'yes';
+  }
+  return '';
+}
+
+function buildAction(
+  node: Node,
+  resolvedCondition: string
+): HookAction {
   const definition = nodeDefinitionByType[node.type ?? ''];
   const data = (node.data ?? {}) as BuilderNodeData;
 
@@ -107,11 +170,11 @@ function buildAction(node: Node, path: BranchPath): HookAction {
 
   return {
     FunctionName: definition?.functionName ?? data.label ?? node.type ?? 'Unknown',
-    ModuleName: '@cogitate/core-pos-components',
-    CallFunction: true,
-    isEndpoint: false,
-    Condition: '',
-    Path: path,
+    ModuleName: data.moduleName ?? definition?.defaultModuleName ?? '@cogitate/core-pos-components',
+    CallFunction: data.callFunction !== false,
+    isEndpoint: data.isEndpoint ?? false,
+    Condition: resolvedCondition,
+    Path: data.path ?? '',
   };
 }
 
@@ -149,7 +212,7 @@ function getStaticParams(node: Node): Record<string, unknown> {
  */
 function groupNodesByRequestName(
   nodes: Node[],
-  resolvePath: (nodeId: string) => BranchPath = () => ''
+  resolveCondition: (nodeId: string) => string = () => ''
 ): HookEntry[] {
   const entryMap = new Map<string, { nodes: Node[]; entry: Partial<HookEntry> }>();
 
@@ -182,7 +245,7 @@ function groupNodesByRequestName(
       ? { HookCallCascading: entry.HookCallCascading }
       : {}),
     StaticParams: entry.StaticParams ?? {},
-    Actions: groupedNodes.map((node) => buildAction(node, resolvePath(node.id))),
+    Actions: groupedNodes.map((node) => buildAction(node, resolveCondition(node.id))),
   }));
 }
 
@@ -203,22 +266,22 @@ export function canvasToHookSchema(
     incomingByTarget.set(edge.target, incoming);
   }
 
-  const pathCache = new Map<string, BranchPath>();
-  const resolving = new Set<string>();
+  const conditionCache = new Map<string, string>();
+  const resolvingCondition = new Set<string>();
 
-  const inferNodePath = (nodeId: string): BranchPath => {
-    const cached = pathCache.get(nodeId);
+  const inferNodeCondition = (nodeId: string): string => {
+    const cached = conditionCache.get(nodeId);
     if (cached !== undefined) {
       return cached;
     }
 
-    if (resolving.has(nodeId)) {
+    if (resolvingCondition.has(nodeId)) {
       return '';
     }
 
-    resolving.add(nodeId);
+    resolvingCondition.add(nodeId);
     const incoming = incomingByTarget.get(nodeId) ?? [];
-    let resolvedPath: BranchPath = '';
+    let resolvedCondition = '';
 
     const directFromCondition = incoming.find((edge) => {
       const sourceNode = nodeById.get(edge.source);
@@ -226,14 +289,28 @@ export function canvasToHookSchema(
     });
 
     if (directFromCondition) {
-      resolvedPath = normalizeBranchPath(directFromCondition.sourceHandle ?? undefined);
+      const conditionNode = nodeById.get(directFromCondition.source);
+      const conditionData = (conditionNode?.data ?? {}) as BuilderNodeData;
+      const inheritedCondition = inferNodeCondition(directFromCondition.source);
+      const conditionExpression = asConditionExpression(conditionData.condition);
+      const branchPath = normalizeBranchPath(directFromCondition.sourceHandle ?? undefined);
+      let branchCondition = '';
+      if (branchPath === 'yes') {
+        branchCondition = conditionExpression;
+      } else if (branchPath === 'no') {
+        branchCondition = negateConditionExpression(conditionExpression);
+      }
+      resolvedCondition = combineConditionExpressions([
+        inheritedCondition,
+        branchCondition,
+      ]);
     } else if (incoming.length === 1) {
-      resolvedPath = inferNodePath(incoming[0].source);
+      resolvedCondition = inferNodeCondition(incoming[0].source);
     }
 
-    resolving.delete(nodeId);
-    pathCache.set(nodeId, resolvedPath);
-    return resolvedPath;
+    resolvingCondition.delete(nodeId);
+    conditionCache.set(nodeId, resolvedCondition);
+    return resolvedCondition;
   };
 
   const preNodes = actionNodes
@@ -250,8 +327,8 @@ export function canvasToHookSchema(
   return {
     Client: clientCode || 'YOUR_CLIENT_CODE',
     Hooks: {
-      Pre: groupNodesByRequestName(preNodes, inferNodePath),
-      Post: groupNodesByRequestName(postNodes, inferNodePath),
+      Pre: groupNodesByRequestName(preNodes, inferNodeCondition),
+      Post: groupNodesByRequestName(postNodes, inferNodeCondition),
     },
   };
 }
@@ -319,6 +396,11 @@ export function hookSchemaToCanvas(config: HookConfig): {
       position: { x, y },
       data: {
         label: definition?.label ?? action.FunctionName,
+        moduleName: action.ModuleName,
+        callFunction: action.CallFunction !== false,
+        isEndpoint: action.isEndpoint ?? false,
+        path: action.Path ?? '',
+        condition: action.Condition,
       },
     } satisfies Node;
     nodes.push(node);
@@ -365,6 +447,7 @@ export function hookSchemaToCanvas(config: HookConfig): {
       mainCursorNodeId = conditionNode.id;
       activeCondition = {
         id: conditionNode.id,
+        expression: asConditionExpression(action.Condition),
         yesTailId: null,
         noTailId: null,
         yesNextY: mainY + 130,
@@ -375,7 +458,11 @@ export function hookSchemaToCanvas(config: HookConfig): {
       continue;
     }
 
-    const explicitPath = normalizeBranchPath(action.Path);
+    const explicitPath =
+      normalizeBranchPath(action.Path) ||
+      (activeCondition
+        ? inferBranchPathFromCondition(action.Condition, activeCondition.expression)
+        : '');
 
     if (activeCondition && explicitPath) {
       activeCondition.hasExplicitBranchAction = true;

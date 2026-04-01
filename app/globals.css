@@ -392,6 +392,16 @@ body {
   stroke-width: 2;
 }
 
+.edge-exec-active .react-flow__edge-path {
+  stroke: #16a34a !important;
+  stroke-width: 3.5 !important;
+}
+
+.edge-exec-completed .react-flow__edge-path {
+  stroke: #22c55e !important;
+  stroke-width: 3 !important;
+}
+
 /* ── Execution Engine: Node Highlights ─────────────────────── */
 
 @keyframes nodeExecutingPulse {
