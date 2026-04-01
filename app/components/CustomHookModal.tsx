@@ -142,7 +142,7 @@ export default function CustomHookModal({ onClose, onCreate }: CustomHookModalPr
               value={formData.code}
               onChange={(e) => handleChange('code', e.target.value)}
               placeholder="Enter hook code"
-              rows={8}
+              rows={15}
             />
           </div>
 
