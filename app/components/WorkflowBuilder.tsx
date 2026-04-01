@@ -30,6 +30,16 @@ import {
 } from './hookSchema';
 import { useExecutionEngine } from './useExecutionEngine';
 
+interface CustomHook {
+  id: string;
+  hookName: string;
+  category: string;
+  functionName: string;
+  moduleName: string;
+  condition?: string;
+  code: string;
+}
+
 const initialNodes: Node[] = [
   {
     id: 'start-1',
@@ -52,12 +62,13 @@ function WorkflowCanvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  const [draggedHookData, setDraggedHookData] = useState<CustomHook | null>(null);
   const [clientCode, setClientCode] = useState('COGITATE');
   const [serializedSchema, setSerializedSchema] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [bottomPanel, setBottomPanel] = useState<'schema' | 'logs'>('logs');
   const { screenToFlowPosition, fitView } = useReactFlow();
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
 
   // ─── Execution Engine ──────────────────────────────────────
   const nodesRef = useCallback(() => nodes, [nodes]);
@@ -163,27 +174,56 @@ function WorkflowCanvas() {
         return;
       }
 
-      const definition = nodeDefinitionByType[type];
       const position = screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,
       });
 
-      const node: Node = {
-        id: getNodeId(),
-        type,
-        position,
-        data: {
-          label: definition?.label ?? type,
-          color: definition?.color,
-          condition: definition?.defaultData?.condition,
-          requestName: definition?.defaultData?.requestName,
-          moduleName: definition?.defaultModuleName || undefined,
-          isEndpoint: definition?.defaultData?.isEndpoint,
-          callFunction: true,
-          description: definition?.description,
-        } satisfies BuilderNodeData,
-      };
+      let node: Node;
+
+      if (type.startsWith('customHook-')) {
+        // Handle custom hook
+        const hookData = draggedHookData;
+        if (!hookData) return;
+
+        node = {
+          id: getNodeId(),
+          type: 'customHook',
+          position,
+          data: {
+            label: hookData.hookName,
+            type: 'customHook',
+            config: {
+              FunctionName: hookData.functionName,
+              ModuleName: hookData.moduleName,
+              Condition: hookData.condition || '',
+              code: hookData.code,
+            },
+            moduleName: hookData.moduleName,
+            condition: hookData.condition,
+            callFunction: true,
+            isEndpoint: false,
+          } satisfies BuilderNodeData,
+        };
+      } else {
+        // Handle regular node
+        const definition = nodeDefinitionByType[type];
+        node = {
+          id: getNodeId(),
+          type,
+          position,
+          data: {
+            label: definition?.label ?? type,
+            color: definition?.color,
+            condition: definition?.defaultData?.condition,
+            requestName: definition?.defaultData?.requestName,
+            moduleName: definition?.defaultModuleName || undefined,
+            isEndpoint: definition?.defaultData?.isEndpoint,
+            callFunction: true,
+            description: definition?.description,
+          } satisfies BuilderNodeData,
+        };
+      }
 
       setNodes((currentNodes) => currentNodes.concat(node));
       setMessage(null);
@@ -196,9 +236,10 @@ function WorkflowCanvas() {
     setSelectedEdgeId(params.edges[0]?.id ?? null);
   }, []);
 
-  const onDragStart = (event: React.DragEvent, nodeType: string) => {
+  const onDragStart = (event: React.DragEvent, nodeType: string, hookData?: CustomHook) => {
     event.dataTransfer.setData('application/reactflow', nodeType);
     event.dataTransfer.effectAllowed = 'move';
+    setDraggedHookData(hookData || null);
   };
 
   const deleteSelection = useCallback(() => {

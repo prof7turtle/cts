@@ -5,6 +5,7 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { nodeDefinitionByType } from './nodeTypes';
 import type { BuilderNodeData } from '../hookSchema';
 import type { NodeExecStatus } from '../useExecutionEngine';
+import CustomHookNode from './CustomHookNode';
 
 function getExecClassName(status: NodeExecStatus | undefined): string {
   switch (status) {
@@ -106,7 +107,10 @@ function BaseNode({ data, selected, type }: NodeProps) {
 const MemoNode = memo(BaseNode);
 MemoNode.displayName = 'MemoNode';
 
-export const customNodeTypes = Object.fromEntries(
-  Object.keys(nodeDefinitionByType).map((type) => [type, MemoNode])
-);
+export const customNodeTypes = {
+  ...Object.fromEntries(
+    Object.keys(nodeDefinitionByType).map((type) => [type, MemoNode])
+  ),
+  customHook: CustomHookNode,
+};
 
