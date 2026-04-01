@@ -33,6 +33,10 @@ export interface HookConfig {
 export interface BuilderNodeData {
   label?: string;
   condition?: string | Record<string, unknown>;
+  requestName?: string;
+  needCascading?: boolean;
+  hookCallCascading?: boolean;
+  staticParams?: Record<string, unknown>;
 }
 
 type BranchPath = '' | 'yes' | 'no';
@@ -45,6 +49,9 @@ interface ActiveConditionState {
   noNextY: number;
   hasExplicitBranchAction: boolean;
 }
+
+const DEFAULT_PRE_REQUEST = '/Quote/Summary';
+const DEFAULT_POST_REQUEST = '/Application/Summary';
 
 function normalizeBranchPath(path?: string): BranchPath {
   const normalized = (path ?? '').trim().toLowerCase();
@@ -140,7 +147,10 @@ function getStaticParams(node: Node): Record<string, unknown> {
  * Groups action nodes by their RequestName and builds HookEntry objects.
  * Nodes sharing the same RequestName are grouped into a single entry.
  */
-function groupNodesByRequestName(nodes: Node[]): HookEntry[] {
+function groupNodesByRequestName(
+  nodes: Node[],
+  resolvePath: (nodeId: string) => BranchPath = () => ''
+): HookEntry[] {
   const entryMap = new Map<string, { nodes: Node[]; entry: Partial<HookEntry> }>();
 
   for (const node of nodes) {
@@ -172,7 +182,7 @@ function groupNodesByRequestName(nodes: Node[]): HookEntry[] {
       ? { HookCallCascading: entry.HookCallCascading }
       : {}),
     StaticParams: entry.StaticParams ?? {},
-    Actions: groupedNodes.map(buildAction),
+    Actions: groupedNodes.map((node) => buildAction(node, resolvePath(node.id))),
   }));
 }
 
@@ -226,24 +236,22 @@ export function canvasToHookSchema(
     return resolvedPath;
   };
 
-  const preActions = actionNodes
+  const preNodes = actionNodes
     .filter((node) => {
       // ifCondition nodes go to Pre by default (or based on context)
       if (node.type === 'ifCondition') return true;
       const definition = nodeDefinitionByType[node.type ?? ''];
       return definition?.category !== 'Post Hook';
-    })
-    .map((node) => buildAction(node, inferNodePath(node.id)));
+    });
 
-  const postActions = actionNodes
-    .filter((node) => node.type !== 'ifCondition' && nodeDefinitionByType[node.type ?? '']?.category === 'Post Hook')
-    .map((node) => buildAction(node, inferNodePath(node.id)));
+  const postNodes = actionNodes
+    .filter((node) => node.type !== 'ifCondition' && nodeDefinitionByType[node.type ?? '']?.category === 'Post Hook');
 
   return {
     Client: clientCode || 'YOUR_CLIENT_CODE',
     Hooks: {
-      Pre: groupNodesByRequestName(preNodes),
-      Post: groupNodesByRequestName(postNodes),
+      Pre: groupNodesByRequestName(preNodes, inferNodePath),
+      Post: groupNodesByRequestName(postNodes, inferNodePath),
     },
   };
 }
