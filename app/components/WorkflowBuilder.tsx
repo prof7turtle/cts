@@ -29,6 +29,7 @@ import {
   type BuilderNodeData,
 } from './hookSchema';
 import { useExecutionEngine } from './useExecutionEngine';
+import WorkflowChatPanel from './chat/WorkflowChatPanel';
 
 interface CustomHook {
   id: string;
@@ -67,6 +68,7 @@ function WorkflowCanvas() {
   const [serializedSchema, setSerializedSchema] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [activePanel, setActivePanel] = useState<"schema" | "logs" | null>(null);
+  const [isChatCollapsed, setIsChatCollapsed] = useState(false);
   const { screenToFlowPosition, fitView } = useReactFlow();
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
 
@@ -260,6 +262,18 @@ function WorkflowCanvas() {
     }
   }, [selectedEdgeId, selectedNodeId, setEdges, setNodes, isExecuting]);
 
+  const clearCanvas = useCallback(() => {
+    if (isExecuting) return;
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+    setSelectedNodeId(null);
+    setSelectedEdgeId(null);
+    setSerializedSchema('');
+    setMessage('Canvas cleared.');
+    engine.reset();
+    setTimeout(() => fitView({ padding: 0.2 }), 50);
+  }, [engine, fitView, isExecuting, setEdges, setNodes]);
+
   // ─── Generic node data updater ──────────────────────────────────
   const updateNodeData = useCallback(
     (field: keyof BuilderNodeData, value: string | boolean | undefined) => {
@@ -308,6 +322,23 @@ function WorkflowCanvas() {
     }
   }, [fitView, serializedSchema, setEdges, setNodes, isExecuting]);
 
+  const applyAISchema = useCallback((newSchema: HookConfig) => {
+    if (isExecuting) return;
+    try {
+      const restored = hookSchemaToCanvas(newSchema);
+      setNodes(restored.nodes);
+      setEdges(restored.edges);
+      setClientCode(newSchema.Client || 'COGITATE');
+      setSelectedNodeId(null);
+      setSelectedEdgeId(null);
+      setMessage('Workflow updated by AI (HookConfig).');
+      setTimeout(() => fitView({ padding: 0.2 }), 50);
+    } catch (e) {
+      console.error('Failed to apply AI HookConfig', e);
+      setMessage('Failed to apply AI HookConfig. See console.');
+    }
+  }, [fitView, isExecuting, setEdges, setNodes]);
+
   const downloadSchema = useCallback(() => {
     const schema = canvasToHookSchema(nodes, edges, clientCode);
     const json = JSON.stringify(schema, null, 2);
@@ -355,7 +386,11 @@ function WorkflowCanvas() {
 
   const selectedData = (selectedNode?.data ?? {}) as BuilderNodeData;
   const selectedCondition =
-    typeof selectedData.condition === 'string' ? selectedData.condition : '';
+    typeof selectedData.condition === 'string'
+      ? selectedData.condition
+      : typeof selectedData.condition?.expression === 'string'
+      ? selectedData.condition.expression
+      : '';
   const selectedDef = nodeDefinitionByType[selectedNode?.type ?? ''];
 
   const canvasStyle = activePanel === "schema" ? { flex: '0 0 80%', borderRight: '1px solid #e5e7eb' } : { flex: 1 };
@@ -380,6 +415,9 @@ function WorkflowCanvas() {
           </button>
           <button type="button" onClick={deleteSelection}>
             Delete
+          </button>
+          <button type="button" onClick={clearCanvas}>
+            Clear Canvas
           </button>
           <button type="button" onClick={exportSchema}>
             Export Schema
@@ -434,6 +472,14 @@ function WorkflowCanvas() {
             onClick={() => setActivePanel(activePanel === "logs" ? null : "logs")}
           >
             Execution Logs
+          </button>
+
+          <button
+            type="button"
+            className="px-3 py-1.5 text-sm border rounded-md hover:bg-gray-100"
+            onClick={() => setIsChatCollapsed((prev) => !prev)}
+          >
+            {isChatCollapsed ? 'Show AI Chat' : 'Hide AI Chat'}
           </button>
 
           {message && <span className="toolbar-message">{message}</span>}
@@ -502,52 +548,65 @@ function WorkflowCanvas() {
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: '0', flex: 1, minHeight: 0 }}>
-          <div ref={reactFlowWrapper} className="canvas-wrap" style={canvasStyle}>
-            <ReactFlow
-              nodes={displayNodes}
-              edges={displayEdges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              onDrop={onDrop}
-              onDragOver={onDragOver}
-              onSelectionChange={onSelectionChange}
-              nodeTypes={customNodeTypes}
-              fitView
-              deleteKeyCode={['Backspace', 'Delete']}
-              defaultEdgeOptions={{
-                type: 'smoothstep',
-                markerEnd: { type: 'arrowclosed' },
-              }}
-            >
-              <MiniMap pannable zoomable />
-              <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-              <Controls showInteractive={false} />
-            </ReactFlow>
+        <div className="builder-workspace">
+          <div className="builder-content">
+            <div style={{ display: 'flex', gap: '0', flex: 1, minHeight: 0 }}>
+              <div ref={reactFlowWrapper} className="canvas-wrap" style={canvasStyle}>
+                <ReactFlow
+                  nodes={displayNodes}
+                  edges={displayEdges}
+                  onNodesChange={onNodesChange}
+                  onEdgesChange={onEdgesChange}
+                  onConnect={onConnect}
+                  onDrop={onDrop}
+                  onDragOver={onDragOver}
+                  onSelectionChange={onSelectionChange}
+                  nodeTypes={customNodeTypes}
+                  fitView
+                  deleteKeyCode={['Backspace', 'Delete']}
+                  defaultEdgeOptions={{
+                    type: 'smoothstep',
+                    markerEnd: { type: 'arrowclosed' },
+                  }}
+                >
+                  <MiniMap pannable zoomable />
+                  <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
+                  <Controls showInteractive={false} />
+                </ReactFlow>
+              </div>
+
+              {activePanel === "schema" && (
+                <div className="schema-panel" style={{ flex: '0 0 20%' }}>
+                  <label htmlFor="hook-schema">Schema Output</label>
+                  <textarea
+                    id="hook-schema"
+                    value={serializedSchema}
+                    onChange={(event) => setSerializedSchema(event.target.value)}
+                    placeholder="Export schema here or paste to import..."
+                  />
+                </div>
+              )}
+            </div>
+
+            {activePanel === 'logs' && (
+              <ExecutionLogs
+                logs={engine.logs}
+                executionState={engine.state}
+                progress={engine.progress}
+                onClear={handleReset}
+              />
+            )}
           </div>
 
-          {activePanel === "schema" && (
-            <div className="schema-panel" style={{ flex: '0 0 20%' }}>
-              <label htmlFor="hook-schema">Schema Output</label>
-              <textarea
-                id="hook-schema"
-                value={serializedSchema}
-                onChange={(event) => setSerializedSchema(event.target.value)}
-                placeholder="Export schema here or paste to import..."
+          <aside className={`chat-sidebar ${isChatCollapsed ? 'collapsed' : ''}`}>
+            {!isChatCollapsed && (
+              <WorkflowChatPanel
+                currentSchema={canvasToHookSchema(nodes, edges, clientCode)}
+                onApplySchema={applyAISchema}
               />
-            </div>
-          )}
+            )}
+          </aside>
         </div>
-
-        {activePanel === 'logs' && (
-          <ExecutionLogs
-            logs={engine.logs}
-            executionState={engine.state}
-            progress={engine.progress}
-            onClear={handleReset}
-          />
-        )}
       </div>
     </div>
   );
