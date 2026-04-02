@@ -66,7 +66,7 @@ function WorkflowCanvas() {
   const [clientCode, setClientCode] = useState('COGITATE');
   const [serializedSchema, setSerializedSchema] = useState('');
   const [message, setMessage] = useState<string | null>(null);
-  const [bottomPanel, setBottomPanel] = useState<'schema' | 'logs'>('logs');
+  const [activePanel, setActivePanel] = useState<"schema" | "logs" | null>(null);
   const { screenToFlowPosition, fitView } = useReactFlow();
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
 
@@ -326,7 +326,7 @@ function WorkflowCanvas() {
   // ─── Execution handlers ─────────────────────────────────────────
   const handleRun = useCallback(() => {
     engine.reset();
-    setBottomPanel('logs');
+    setActivePanel('logs');
     // Small delay to ensure reset completes before run
     setTimeout(() => engine.run(), 50);
   }, [engine]);
@@ -357,6 +357,8 @@ function WorkflowCanvas() {
   const selectedCondition =
     typeof selectedData.condition === 'string' ? selectedData.condition : '';
   const selectedDef = nodeDefinitionByType[selectedNode?.type ?? ''];
+
+  const canvasStyle = activePanel === "schema" ? { flex: '0 0 80%', borderRight: '1px solid #e5e7eb' } : { flex: 1 };
 
   return (
     <div className="builder-layout">
@@ -417,6 +419,22 @@ function WorkflowCanvas() {
               </button>
             )}
           </div>
+
+          <button
+            type="button"
+            className={`px-3 py-1.5 text-sm border rounded-md ${activePanel === "schema" ? "bg-blue-500 text-white" : "hover:bg-gray-100"}`}
+            onClick={() => setActivePanel(activePanel === "schema" ? null : "schema")}
+          >
+            Schema Output
+          </button>
+
+          <button
+            type="button"
+            className={`px-3 py-1.5 text-sm border rounded-md ${activePanel === "logs" ? "bg-blue-500 text-white" : "hover:bg-gray-100"}`}
+            onClick={() => setActivePanel(activePanel === "logs" ? null : "logs")}
+          >
+            Execution Logs
+          </button>
 
           {message && <span className="toolbar-message">{message}</span>}
         </div>
@@ -485,7 +503,7 @@ function WorkflowCanvas() {
         )}
 
         <div style={{ display: 'flex', gap: '0', flex: 1, minHeight: 0 }}>
-          <div ref={reactFlowWrapper} className="canvas-wrap" style={{ flex: '0 0 80%', borderRight: '1px solid #e5e7eb' }}>
+          <div ref={reactFlowWrapper} className="canvas-wrap" style={canvasStyle}>
             <ReactFlow
               nodes={displayNodes}
               edges={displayEdges}
@@ -509,30 +527,20 @@ function WorkflowCanvas() {
             </ReactFlow>
           </div>
 
-          <div className="schema-panel" style={{ flex: '0 0 20%' }}>
-            <label htmlFor="hook-schema">Schema Output</label>
-            <textarea
-              id="hook-schema"
-              value={serializedSchema}
-              onChange={(event) => setSerializedSchema(event.target.value)}
-              placeholder="Export schema here or paste to import..."
-            />
-          </div>
+          {activePanel === "schema" && (
+            <div className="schema-panel" style={{ flex: '0 0 20%' }}>
+              <label htmlFor="hook-schema">Schema Output</label>
+              <textarea
+                id="hook-schema"
+                value={serializedSchema}
+                onChange={(event) => setSerializedSchema(event.target.value)}
+                placeholder="Export schema here or paste to import..."
+              />
+            </div>
+          )}
         </div>
 
-        {bottomPanel === 'schema' && (
-          <div className="schema-panel">
-            <label htmlFor="hook-schema">Hook Schema JSON</label>
-            <textarea
-              id="hook-schema"
-              value={serializedSchema}
-              onChange={(event) => setSerializedSchema(event.target.value)}
-              placeholder="Export schema to edit or paste existing schema for import..."
-            />
-          </div>
-        )}
-
-        {bottomPanel === 'logs' && (
+        {activePanel === 'logs' && (
           <ExecutionLogs
             logs={engine.logs}
             executionState={engine.state}
