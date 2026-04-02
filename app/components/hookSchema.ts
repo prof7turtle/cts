@@ -32,6 +32,8 @@ export interface HookConfig {
 
 export interface BuilderNodeData {
   label?: string;
+  type?: string;
+  config?: Record<string, unknown>;
   color?: string;
   condition?: string | Record<string, unknown>;
   moduleName?: string;
@@ -94,7 +96,18 @@ function isConditionAction(action: HookAction): boolean {
 function asConditionExpression(
   condition: string | Record<string, unknown> | undefined
 ): string {
-  return typeof condition === 'string' ? condition.trim() : '';
+  if (typeof condition === 'string') {
+    return condition.trim();
+  }
+
+  if (condition && typeof condition === 'object') {
+    const expression = condition.expression;
+    if (typeof expression === 'string') {
+      return expression.trim();
+    }
+  }
+
+  return '';
 }
 
 function negateConditionExpression(condition: string): string {
