@@ -23,6 +23,7 @@ function getExecClassName(status: NodeExecStatus | undefined): string {
 function CustomHookNode({ data, selected }: NodeProps) {
   const typedData = (data ?? {}) as BuilderNodeData & { executionStatus?: NodeExecStatus };
   const label = typedData.label ?? 'Custom Hook';
+  const subtitle = 'Custom Hook';
   const execClass = getExecClassName(typedData.executionStatus);
   const p = PASTEL.custom;
 
@@ -40,7 +41,7 @@ function CustomHookNode({ data, selected }: NodeProps) {
       />
 
       <div
-        className="node-header flex min-h-[3rem] items-center gap-3 rounded-t-[13px] border-b px-5 py-3.5 text-[13px] font-semibold leading-snug"
+        className="node-header flex min-h-[3rem] items-center gap-3 rounded-t-[13px] border-b px-5 py-3 text-[13px] font-semibold leading-snug"
         style={{
           background: p.bg,
           color: p.fg,
@@ -58,13 +59,16 @@ function CustomHookNode({ data, selected }: NodeProps) {
           CH
         </span>
         <span className="min-w-0 truncate tracking-tight" style={{ color: p.fg }}>
-          {label}
+          {subtitle}
         </span>
       </div>
 
-      <div className="node-body">
-        <div className="custom-hook-subtitle text-center" style={{ color: p.fg }}>
-          Custom hook
+      <div className="node-body px-5 py-4">
+        <div
+          className="text-center text-[15px] font-semibold leading-snug tracking-tight"
+          style={{ color: p.fg }}
+        >
+          {label}
         </div>
       </div>
 

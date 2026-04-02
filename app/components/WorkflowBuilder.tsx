@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -62,13 +62,15 @@ function WorkflowCanvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [draggedHookData, setDraggedHookData] = useState<CustomHook | null>(null);
   const [clientCode, setClientCode] = useState('COGITATE');
   const [serializedSchema, setSerializedSchema] = useState('');
   const [message, setMessage] = useState<string | null>(null);
-  const [bottomPanel, setBottomPanel] = useState<'schema' | 'logs'>('logs');
+  const [showSchemaPanel, setShowSchemaPanel] = useState(true);
+  const [showLogsPanel, setShowLogsPanel] = useState(true);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
   const { screenToFlowPosition, fitView } = useReactFlow();
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  const actionsMenuRef = useRef<HTMLDivElement>(null);
 
   const nodesRef = useCallback(() => nodes, [nodes]);
   const edgesRef = useCallback(() => edges, [edges]);
@@ -181,7 +183,8 @@ function WorkflowCanvas() {
       let node: Node;
 
       if (type.startsWith('customHook-')) {
-        const hookData = draggedHookData;
+        const hookPayload = event.dataTransfer.getData('application/reactflow-custom-hook');
+        const hookData = hookPayload ? (JSON.parse(hookPayload) as CustomHook) : null;
         if (!hookData) return;
 
         node = {
@@ -235,8 +238,13 @@ function WorkflowCanvas() {
 
   const onDragStart = (event: React.DragEvent, nodeType: string, hookData?: CustomHook) => {
     event.dataTransfer.setData('application/reactflow', nodeType);
+    if (hookData) {
+      event.dataTransfer.setData(
+        'application/reactflow-custom-hook',
+        JSON.stringify(hookData)
+      );
+    }
     event.dataTransfer.effectAllowed = 'move';
-    setDraggedHookData(hookData || null);
   };
 
   const deleteSelection = useCallback(() => {
@@ -320,7 +328,7 @@ function WorkflowCanvas() {
 
   const handleRun = useCallback(() => {
     engine.reset();
-    setBottomPanel('logs');
+    setShowLogsPanel(true);
     setTimeout(() => engine.run(), 50);
   }, [engine]);
 
@@ -344,81 +352,160 @@ function WorkflowCanvas() {
   const selectedCondition =
     typeof selectedData.condition === 'string' ? selectedData.condition : '';
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        actionsMenuRef.current &&
+        !actionsMenuRef.current.contains(event.target as Node)
+      ) {
+        setShowActionsMenu(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const toolbarBtn =
-    'inline-flex min-h-[40px] items-center justify-center rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 text-[13px] font-semibold leading-snug tracking-tight text-slate-700 shadow-sm ring-1 ring-slate-900/[0.03] transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50/90 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 active:translate-y-0';
+    'inline-flex min-h-[44px] min-w-[112px] items-center justify-center rounded-lg border border-slate-200/80 bg-white px-8 py-2 text-sm font-medium leading-normal text-slate-700 shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600';
+  const deleteBtn =
+    'inline-flex min-h-[44px] min-w-[112px] items-center justify-center rounded-lg border border-red-200 bg-red-50 px-8 py-2 text-sm font-semibold leading-normal text-red-600 shadow-sm transition-all duration-200 hover:border-red-300 hover:bg-red-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500';
+  const toolbarToggle =
+    'inline-flex min-h-[44px] min-w-[112px] items-center justify-center rounded-lg border border-slate-200/80 bg-white px-8 py-2 text-sm font-medium leading-normal text-slate-700 shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600';
+  const actionMenuItem =
+    'flex w-full items-center rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors duration-150 hover:bg-slate-100';
 
   return (
     <div className="builder-layout">
       <NodesPanel onDragStart={onDragStart} />
 
       <div className="builder-main">
-        <div className="builder-toolbar flex flex-wrap items-center gap-4 border-b border-slate-200/90 bg-white px-6 py-4 shadow-[0_4px_24px_-12px_rgba(15,23,42,0.06)]">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-4">
-            <label className="flex min-w-[180px] items-center gap-3 text-[13px] font-semibold text-slate-600">
-              Client code
-              <input
-                value={clientCode}
-                onChange={(event) => setClientCode(event.target.value)}
-                className="toolbar-input min-w-[120px] flex-1"
-                placeholder="e.g., COGITATE"
-              />
-            </label>
+        <div className="builder-toolbar relative z-30 overflow-visible border-b border-slate-200/90 bg-white px-6 py-3 shadow-[0_8px_24px_-18px_rgba(15,23,42,0.18)]">
+          <div className="flex flex-wrap items-center gap-3 lg:flex-nowrap">
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3 lg:flex-nowrap">
+                <div className="flex min-w-0 flex-wrap items-center gap-3 lg:flex-[0_0_auto]">
+                  <span className="shrink-0 text-[13px] font-semibold text-slate-500">Client code</span>
+                  <input
+                    value={clientCode}
+                    onChange={(event) => setClientCode(event.target.value)}
+                    className="toolbar-input w-[180px] min-w-[140px] bg-white sm:w-[220px] lg:w-[240px]"
+                  placeholder="e.g., COGITATE"
+                />
+                  {engine.state !== 'running' && engine.state !== 'paused' && (
+                    <button
+                      type="button"
+                      onClick={handleRun}
+                      className="inline-flex min-h-[44px] min-w-[112px] items-center justify-center rounded-lg bg-green-600 px-8 py-2 text-sm font-semibold text-white shadow-md shadow-green-600/25 transition-all duration-200 hover:bg-green-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+                    >
+                      Run
+                    </button>
+                  )}
+                  {engine.state === 'paused' && (
+                    <button type="button" className={toolbarBtn} onClick={handleResume}>
+                      Resume
+                    </button>
+                  )}
+                  {engine.state === 'running' && (
+                    <button type="button" className={toolbarBtn} onClick={handlePause}>
+                      Pause
+                    </button>
+                  )}
+                  {isExecuting && (
+                    <button type="button" className={toolbarBtn} onClick={handleStop}>
+                      Stop
+                    </button>
+                  )}
+                  {(engine.state === 'completed' || engine.state === 'error') && (
+                    <button type="button" className={toolbarBtn} onClick={handleReset}>
+                      Reset
+                    </button>
+                  )}
+                </div>
 
-            <div className="hidden h-6 w-px bg-slate-200 sm:block" aria-hidden />
+                <div className="flex flex-1 flex-wrap items-center gap-2 lg:flex-nowrap">
+                  <button type="button" className={deleteBtn} onClick={deleteSelection}>
+                    Delete
+                  </button>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <button type="button" className={toolbarBtn} onClick={() => fitView({ padding: 0.2 })}>
-                Fit view
-              </button>
-              <button type="button" className={toolbarBtn} onClick={deleteSelection}>
-                Delete
-              </button>
-              <button type="button" className={toolbarBtn} onClick={exportSchema}>
-                Export schema
-              </button>
-              <button type="button" className={toolbarBtn} onClick={importSchema}>
-                Import schema
-              </button>
-              <button type="button" className={toolbarBtn} onClick={downloadSchema}>
-                Download JSON
-              </button>
+                  <div className="relative" ref={actionsMenuRef}>
+                    <button
+                      type="button"
+                      className={toolbarBtn}
+                      onClick={() => setShowActionsMenu((value) => !value)}
+                    >
+                      Actions
+                    </button>
+
+                    {showActionsMenu && (
+                      <div className="pointer-events-auto absolute left-0 top-[calc(100%+10px)] z-[80] min-w-[220px] rounded-xl border border-slate-200/90 bg-white p-2 opacity-100 shadow-2xl shadow-slate-900/18 ring-1 ring-slate-900/5">
+                        <button
+                          type="button"
+                          className={actionMenuItem}
+                          onClick={() => {
+                            importSchema();
+                            setShowActionsMenu(false);
+                          }}
+                        >
+                          Import schema
+                        </button>
+                        <button
+                          type="button"
+                          className={actionMenuItem}
+                          onClick={() => {
+                            exportSchema();
+                            setShowActionsMenu(false);
+                          }}
+                        >
+                          Export schema
+                        </button>
+                        <button
+                          type="button"
+                          className={actionMenuItem}
+                          onClick={() => {
+                            downloadSchema();
+                            setShowActionsMenu(false);
+                          }}
+                        >
+                        Download JSON
+                      </button>
+                    </div>
+                  )}
+                </div>
+                </div>
+              </div>
+
+              <div className="ml-auto flex flex-wrap items-center gap-3 lg:flex-nowrap">
+                <button type="button" className={toolbarBtn} onClick={() => fitView({ padding: 0.2 })}>
+                  Fit screen
+                </button>
+
+                <div className="hidden h-8 w-px bg-slate-200 lg:block" aria-hidden />
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowLogsPanel((value) => !value)}
+                    className={toolbarToggle}
+                  >
+                    {showLogsPanel ? 'Hide logs' : 'Show logs'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowSchemaPanel((value) => !value)}
+                    className={toolbarToggle}
+                  >
+                    {showSchemaPanel ? 'Hide schema' : 'Show schema'}
+                  </button>
+                </div>
+              </div>
             </div>
-
-            <div className="hidden h-6 w-px bg-slate-200 lg:block" aria-hidden />
-
-            <div className="flex flex-wrap items-center gap-1.5 border-slate-200 lg:border-l lg:pl-3">
-              {engine.state !== 'running' && engine.state !== 'paused' && (
-                <button type="button" className="exec-btn exec-btn-run" onClick={handleRun}>
-                  Run
-                </button>
-              )}
-              {engine.state === 'running' && (
-                <button type="button" className="exec-btn exec-btn-pause" onClick={handlePause}>
-                  Pause
-                </button>
-              )}
-              {engine.state === 'paused' && (
-                <button type="button" className="exec-btn exec-btn-run" onClick={handleResume}>
-                  Resume
-                </button>
-              )}
-              {isExecuting && (
-                <button type="button" className="exec-btn exec-btn-stop" onClick={handleStop}>
-                  Stop
-                </button>
-              )}
-              {(engine.state === 'completed' || engine.state === 'error') && (
-                <button type="button" className="exec-btn exec-btn-reset" onClick={handleReset}>
-                  Reset
-                </button>
-              )}
-            </div>
-          </div>
 
           {message && (
-            <span className="toolbar-message max-w-full shrink-0 truncate rounded-lg border border-blue-100 bg-blue-50/90 px-3 py-2 text-xs font-medium leading-snug text-[#1d4ed8]">
-              {message}
-            </span>
+            <div className="mt-3 flex justify-end">
+              <span className="toolbar-message max-w-full truncate rounded-lg border border-blue-100 bg-blue-50/90 px-3 py-2 text-xs font-medium leading-snug text-[#1d4ed8]">
+                {message}
+              </span>
+            </div>
           )}
         </div>
 
@@ -489,7 +576,7 @@ function WorkflowCanvas() {
         <div className="flex min-h-0 flex-1">
           <div
             ref={reactFlowWrapper}
-            className="canvas-wrap min-w-0 flex-[0_0_80%] border-r border-slate-200"
+            className={`canvas-wrap min-w-0 ${showSchemaPanel ? 'flex-[0_0_80%] border-r border-slate-200' : 'flex-1'}`}
           >
             <ReactFlow
               nodes={displayNodes}
@@ -529,32 +616,22 @@ function WorkflowCanvas() {
             </ReactFlow>
           </div>
 
-          <div className="schema-panel min-w-0 flex-[0_0_20%]">
-            <label htmlFor="hook-schema-side" className="text-xs font-semibold text-slate-700">
-              Schema output
-            </label>
-            <textarea
-              id="hook-schema-side"
-              value={serializedSchema}
-              onChange={(event) => setSerializedSchema(event.target.value)}
-              placeholder="Export schema here or paste to import..."
-            />
-          </div>
+          {showSchemaPanel && (
+            <div className="schema-panel min-w-0 flex-[0_0_20%]">
+              <label htmlFor="hook-schema-side" className="text-xs font-semibold text-slate-700">
+                Hook schema
+              </label>
+              <textarea
+                id="hook-schema-side"
+                value={serializedSchema}
+                onChange={(event) => setSerializedSchema(event.target.value)}
+                placeholder="Export schema here or paste to import..."
+              />
+            </div>
+          )}
         </div>
 
-        {bottomPanel === 'schema' && (
-          <div className="schema-panel">
-            <label htmlFor="hook-schema">Hook Schema JSON</label>
-            <textarea
-              id="hook-schema"
-              value={serializedSchema}
-              onChange={(event) => setSerializedSchema(event.target.value)}
-              placeholder="Export schema to edit or paste existing schema for import..."
-            />
-          </div>
-        )}
-
-        {bottomPanel === 'logs' && (
+        {showLogsPanel && (
           <ExecutionLogs
             logs={engine.logs}
             executionState={engine.state}

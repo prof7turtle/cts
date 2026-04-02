@@ -8,37 +8,44 @@ export default function HomePage() {
   const [view, setView] = useState<'list' | 'builder'>('list');
 
   return (
-    <div className="flex h-[calc(100vh-3.75rem)] min-h-0 flex-col">
+    <div className="flex h-[calc(100vh-3.75rem)] min-h-0 flex-col bg-[linear-gradient(180deg,#f8fafc_0%,#f3f6fb_100%)]">
       <nav
-        className="flex shrink-0 flex-col gap-4 border-b border-slate-200/90 bg-white/95 px-5 py-4 shadow-[inset_0_-1px_0_rgba(15,23,42,0.04)] backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:px-8"
+        className="border-b border-slate-200/70 bg-white/80 px-8 py-4 backdrop-blur-md sm:px-10"
         aria-label="Primary"
       >
-        <p className="max-w-md text-[15px] leading-relaxed text-slate-600">
-          Design and manage policy automation workflows
-        </p>
-        <div className="inline-flex shrink-0 rounded-xl border border-slate-200/90 bg-slate-100/90 p-1 shadow-inner">
-          <button
-            type="button"
-            onClick={() => setView('list')}
-            className={`rounded-lg px-5 py-2 text-sm font-semibold tracking-tight transition-all duration-200 ${
-              view === 'list'
-                ? 'bg-white text-blue-700 shadow-md shadow-slate-200/80 ring-1 ring-slate-200/60'
-                : 'text-slate-600 hover:bg-white/60 hover:text-slate-900'
-            }`}
-          >
-            Workflows
-          </button>
-          <button
-            type="button"
-            onClick={() => setView('builder')}
-            className={`rounded-lg px-5 py-2 text-sm font-semibold tracking-tight transition-all duration-200 ${
-              view === 'builder'
-                ? 'bg-white text-blue-700 shadow-md shadow-slate-200/80 ring-1 ring-slate-200/60'
-                : 'text-slate-600 hover:bg-white/60 hover:text-slate-900'
-            }`}
-          >
-            Builder
-          </button>
+        <div className="mx-auto flex w-full max-w-[1240px] flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">
+              Studio
+            </p>
+            <p className="mt-1 text-sm text-slate-600">
+              Design and manage policy automation workflows
+            </p>
+          </div>
+          <div className="inline-flex w-fit self-start rounded-2xl border border-slate-200 bg-slate-100/90 p-1.5 shadow-inner lg:self-auto">
+            <button
+              type="button"
+              onClick={() => setView('list')}
+              className={`min-w-[128px] rounded-xl px-6 py-2.5 text-sm font-semibold transition-all duration-200 ${
+                view === 'list'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              Workflows
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('builder')}
+              className={`min-w-[128px] rounded-xl px-6 py-2.5 text-sm font-semibold transition-all duration-200 ${
+                view === 'builder'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              Builder
+            </button>
+          </div>
         </div>
       </nav>
 

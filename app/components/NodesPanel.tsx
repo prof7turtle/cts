@@ -26,21 +26,24 @@ interface NodesPanelProps {
 const GROUPS: { title: string; categories: ActionCategory[] }[] = [
   { title: 'Flow', categories: ['Flow'] },
   { title: 'Decision', categories: ['Decision'] },
-  { title: 'Hooks', categories: ['Pre Hook', 'Post Hook'] },
+  { title: 'Pre Hook', categories: ['Pre Hook'] },
+  { title: 'Post Hook', categories: ['Post Hook'] },
 ];
 
 /** Hover / ring accents aligned with each section’s pastel family */
 const SECTION_TILE_ACCENT: Record<string, string> = {
   Flow: 'hover:border-emerald-200 hover:from-white hover:to-emerald-50/60 hover:shadow-emerald-100/40 hover:ring-emerald-100/50',
   Decision: 'hover:border-amber-200 hover:from-white hover:to-amber-50/60 hover:shadow-amber-100/40 hover:ring-amber-100/50',
-  Hooks: 'hover:border-sky-200 hover:from-white hover:to-sky-50/60 hover:shadow-sky-100/40 hover:ring-sky-100/50',
+  'Pre Hook': 'hover:border-cyan-200 hover:from-white hover:to-cyan-50/60 hover:shadow-cyan-100/40 hover:ring-cyan-100/50',
+  'Post Hook': 'hover:border-rose-200 hover:from-white hover:to-rose-50/60 hover:shadow-rose-100/40 hover:ring-rose-100/50',
 };
 
 const SECTION_TITLE_STYLE: Record<string, string> = {
-  'Custom hooks': 'text-violet-800/70',
+  'Custom hooks': 'text-fuchsia-800/70',
   Flow: 'text-emerald-800/70',
   Decision: 'text-amber-900/60',
-  Hooks: 'text-sky-900/60',
+  'Pre Hook': 'text-cyan-900/70',
+  'Post Hook': 'text-rose-900/70',
 };
 
 function tileBase(sectionTitle: string) {

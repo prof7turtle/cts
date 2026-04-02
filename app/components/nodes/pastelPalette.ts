@@ -1,21 +1,14 @@
 import type { ActionCategory } from './nodeTypes';
 
-/** Soft pastel system — one family per logical group (Flow / Decision / Hooks / Custom). */
 export type PastelSet = {
-  /** Node header & sidebar icon background */
   bg: string;
-  /** Primary text on pastel */
   fg: string;
-  /** Connection handles */
   handle: string;
-  /** Subtle border / ring */
   border: string;
-  /** Soft shadow tint */
   shadow: string;
 };
 
-/** `fg` / `iconFg` are always dark — never white — for contrast on pastel surfaces */
-export const PASTEL: Record<'flow' | 'decision' | 'hooks' | 'custom', PastelSet> = {
+export const PASTEL: Record<'flow' | 'decision' | 'preHook' | 'postHook' | 'custom', PastelSet> = {
   flow: {
     bg: '#d1fae5',
     fg: '#064e3b',
@@ -30,12 +23,19 @@ export const PASTEL: Record<'flow' | 'decision' | 'hooks' | 'custom', PastelSet>
     border: '#fed7aa',
     shadow: 'rgba(154, 52, 18, 0.12)',
   },
-  hooks: {
-    bg: '#dbeafe',
-    fg: '#172554',
-    handle: '#60a5fa',
-    border: '#bfdbfe',
-    shadow: 'rgba(30, 58, 138, 0.12)',
+  preHook: {
+    bg: '#cffafe',
+    fg: '#164e63',
+    handle: '#22d3ee',
+    border: '#a5f3fc',
+    shadow: 'rgba(8, 145, 178, 0.14)',
+  },
+  postHook: {
+    bg: '#ffe4e6',
+    fg: '#9f1239',
+    handle: '#fb7185',
+    border: '#fecdd3',
+    shadow: 'rgba(190, 24, 93, 0.14)',
   },
   custom: {
     bg: '#ede9fe',
@@ -51,7 +51,9 @@ export function categoryToPastelKey(
 ): keyof typeof PASTEL {
   if (category === 'Flow') return 'flow';
   if (category === 'Decision') return 'decision';
-  return 'hooks';
+  if (category === 'Pre Hook') return 'preHook';
+  if (category === 'Post Hook') return 'postHook';
+  return 'flow';
 }
 
 export function getPastelForCategory(category: ActionCategory | undefined): PastelSet {
@@ -63,7 +65,8 @@ export function getPastelForSectionTitle(title: string): PastelSet {
   const t = title.trim().toLowerCase();
   if (t === 'flow') return PASTEL.flow;
   if (t === 'decision') return PASTEL.decision;
-  if (t === 'hooks') return PASTEL.hooks;
+  if (t === 'pre hook') return PASTEL.preHook;
+  if (t === 'post hook') return PASTEL.postHook;
   if (t === 'custom hooks') return PASTEL.custom;
   return PASTEL.flow;
 }
