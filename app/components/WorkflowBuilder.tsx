@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -29,6 +29,7 @@ import {
   type BuilderNodeData,
 } from './hookSchema';
 import { useExecutionEngine } from './useExecutionEngine';
+import WorkflowChatPanel from './chat/WorkflowChatPanel';
 
 interface CustomHook {
   id: string;
@@ -65,13 +66,10 @@ function WorkflowCanvas() {
   const [clientCode, setClientCode] = useState('COGITATE');
   const [serializedSchema, setSerializedSchema] = useState('');
   const [message, setMessage] = useState<string | null>(null);
-  const [showSchemaPanel, setShowSchemaPanel] = useState(true);
-  const [showLogsPanel, setShowLogsPanel] = useState(true);
-  const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const [activePanel, setActivePanel] = useState<"schema" | "logs" | null>(null);
+  const [isChatCollapsed, setIsChatCollapsed] = useState(false);
   const { screenToFlowPosition, fitView } = useReactFlow();
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
-  const actionsMenuRef = useRef<HTMLDivElement>(null);
-
   const nodesRef = useCallback(() => nodes, [nodes]);
   const edgesRef = useCallback(() => edges, [edges]);
   const engine = useExecutionEngine(nodesRef, edgesRef);
@@ -265,6 +263,19 @@ function WorkflowCanvas() {
     }
   }, [selectedEdgeId, selectedNodeId, setEdges, setNodes, isExecuting]);
 
+  const clearCanvas = useCallback(() => {
+    if (isExecuting) return;
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+    setSelectedNodeId(null);
+    setSelectedEdgeId(null);
+    setSerializedSchema('');
+    setMessage('Canvas cleared.');
+    engine.reset();
+    setTimeout(() => fitView({ padding: 0.2 }), 50);
+  }, [engine, fitView, isExecuting, setEdges, setNodes]);
+
+  // ─── Generic node data updater ──────────────────────────────────
   const updateNodeData = useCallback(
     (field: keyof BuilderNodeData, value: string | boolean | undefined) => {
       if (!selectedNodeId || isExecuting) return;
@@ -311,6 +322,23 @@ function WorkflowCanvas() {
     }
   }, [fitView, serializedSchema, setEdges, setNodes, isExecuting]);
 
+  const applyAISchema = useCallback((newSchema: HookConfig) => {
+    if (isExecuting) return;
+    try {
+      const restored = hookSchemaToCanvas(newSchema);
+      setNodes(restored.nodes);
+      setEdges(restored.edges);
+      setClientCode(newSchema.Client || 'COGITATE');
+      setSelectedNodeId(null);
+      setSelectedEdgeId(null);
+      setMessage('Workflow updated by AI (HookConfig).');
+      setTimeout(() => fitView({ padding: 0.2 }), 50);
+    } catch (e) {
+      console.error('Failed to apply AI HookConfig', e);
+      setMessage('Failed to apply AI HookConfig. See console.');
+    }
+  }, [fitView, isExecuting, setEdges, setNodes]);
+
   const downloadSchema = useCallback(() => {
     const schema = canvasToHookSchema(nodes, edges, clientCode);
     const json = JSON.stringify(schema, null, 2);
@@ -328,7 +356,8 @@ function WorkflowCanvas() {
 
   const handleRun = useCallback(() => {
     engine.reset();
-    setShowLogsPanel(true);
+    setActivePanel('logs');
+    // Small delay to ensure reset completes before run
     setTimeout(() => engine.run(), 50);
   }, [engine]);
 
@@ -350,155 +379,99 @@ function WorkflowCanvas() {
 
   const selectedData = (selectedNode?.data ?? {}) as BuilderNodeData;
   const selectedCondition =
-    typeof selectedData.condition === 'string' ? selectedData.condition : '';
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        actionsMenuRef.current &&
-        !actionsMenuRef.current.contains(event.target as Node)
-      ) {
-        setShowActionsMenu(false);
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const toolbarBtn =
-    'inline-flex min-h-[44px] min-w-[112px] items-center justify-center rounded-lg border border-slate-200/80 bg-white px-8 py-2 text-sm font-medium leading-normal text-slate-700 shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600';
-  const deleteBtn =
-    'inline-flex min-h-[44px] min-w-[112px] items-center justify-center rounded-lg border border-red-200 bg-red-50 px-8 py-2 text-sm font-semibold leading-normal text-red-600 shadow-sm transition-all duration-200 hover:border-red-300 hover:bg-red-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500';
-  const toolbarToggle =
-    'inline-flex min-h-[44px] min-w-[112px] items-center justify-center rounded-lg border border-slate-200/80 bg-white px-8 py-2 text-sm font-medium leading-normal text-slate-700 shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600';
-  const actionMenuItem =
-    'flex w-full items-center rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors duration-150 hover:bg-slate-100';
+    typeof selectedData.condition === 'string'
+      ? selectedData.condition
+      : typeof selectedData.condition?.expression === 'string'
+      ? selectedData.condition.expression
+      : '';
+  const canvasStyle = activePanel === "schema" ? { flex: '0 0 80%', borderRight: '1px solid #e5e7eb' } : { flex: 1 };
 
   return (
     <div className="builder-layout">
       <NodesPanel onDragStart={onDragStart} />
 
       <div className="builder-main">
-        <div className="builder-toolbar relative z-30 overflow-visible border-b border-slate-200/90 bg-white px-6 py-3 shadow-[0_8px_24px_-18px_rgba(15,23,42,0.18)]">
-          <div className="flex flex-wrap items-center gap-3 lg:flex-nowrap">
-              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3 lg:flex-nowrap">
-                <div className="flex min-w-0 flex-wrap items-center gap-3 lg:flex-[0_0_auto]">
-                  <span className="shrink-0 text-[13px] font-semibold text-slate-500">Client code</span>
-                  <input
-                    value={clientCode}
-                    onChange={(event) => setClientCode(event.target.value)}
-                    className="toolbar-input w-[180px] min-w-[140px] bg-white sm:w-[220px] lg:w-[240px]"
-                  placeholder="e.g., COGITATE"
-                />
-                  {engine.state !== 'running' && engine.state !== 'paused' && (
-                    <button
-                      type="button"
-                      onClick={handleRun}
-                      className="inline-flex min-h-[44px] min-w-[112px] items-center justify-center rounded-lg bg-green-600 px-8 py-2 text-sm font-semibold text-white shadow-md shadow-green-600/25 transition-all duration-200 hover:bg-green-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
-                    >
-                      Run
-                    </button>
-                  )}
-                  {engine.state === 'paused' && (
-                    <button type="button" className={toolbarBtn} onClick={handleResume}>
-                      Resume
-                    </button>
-                  )}
-                  {engine.state === 'running' && (
-                    <button type="button" className={toolbarBtn} onClick={handlePause}>
-                      Pause
-                    </button>
-                  )}
-                  {isExecuting && (
-                    <button type="button" className={toolbarBtn} onClick={handleStop}>
-                      Stop
-                    </button>
-                  )}
-                  {(engine.state === 'completed' || engine.state === 'error') && (
-                    <button type="button" className={toolbarBtn} onClick={handleReset}>
-                      Reset
-                    </button>
-                  )}
-                </div>
+        <div className="builder-toolbar">
+          <label>
+            Client Code
+            <input
+              value={clientCode}
+              onChange={(event) => setClientCode(event.target.value)}
+              className="toolbar-input"
+              placeholder="e.g., COGITATE"
+            />
+          </label>
+          <button type="button" onClick={() => fitView({ padding: 0.2 })}>
+            Fit View
+          </button>
+          <button type="button" onClick={deleteSelection}>
+            Delete
+          </button>
+          <button type="button" onClick={clearCanvas}>
+            Clear Canvas
+          </button>
+          <button type="button" onClick={exportSchema}>
+            Export Schema
+          </button>
+          <button type="button" onClick={importSchema}>
+            Import Schema
+          </button>
+          <button type="button" onClick={downloadSchema}>
+            ⬇ Download JSON
+          </button>
 
-                <div className="flex flex-1 flex-wrap items-center gap-2 lg:flex-nowrap">
-                  <button type="button" className={deleteBtn} onClick={deleteSelection}>
-                    Delete
-                  </button>
+          {/* ─── Execution Controls ─────────────────────────── */}
+          <div style={{ borderLeft: '1px solid #c9d7ea', paddingLeft: '8px', marginLeft: '4px', display: 'flex', gap: '4px' }}>
+            {engine.state !== 'running' && engine.state !== 'paused' && (
+              <button type="button" className="exec-btn exec-btn-run" onClick={handleRun}>
+                ▶ Run
+              </button>
+            )}
+            {engine.state === 'running' && (
+              <button type="button" className="exec-btn exec-btn-pause" onClick={handlePause}>
+                ⏸ Pause
+              </button>
+            )}
+            {engine.state === 'paused' && (
+              <button type="button" className="exec-btn exec-btn-run" onClick={handleResume}>
+                ▶ Resume
+              </button>
+            )}
+            {isExecuting && (
+              <button type="button" className="exec-btn exec-btn-stop" onClick={handleStop}>
+                ⏹ Stop
+              </button>
+            )}
+            {(engine.state === 'completed' || engine.state === 'error') && (
+              <button type="button" className="exec-btn exec-btn-reset" onClick={handleReset}>
+                ↺ Reset
+              </button>
+            )}
+          </div>
 
-                  <div className="relative" ref={actionsMenuRef}>
-                    <button
-                      type="button"
-                      className={toolbarBtn}
-                      onClick={() => setShowActionsMenu((value) => !value)}
-                    >
-                      Actions
-                    </button>
+          <button
+            type="button"
+            className={`px-3 py-1.5 text-sm border rounded-md ${activePanel === "schema" ? "bg-blue-500 text-white" : "hover:bg-gray-100"}`}
+            onClick={() => setActivePanel(activePanel === "schema" ? null : "schema")}
+          >
+            Schema Output
+          </button>
 
-                    {showActionsMenu && (
-                      <div className="pointer-events-auto absolute left-0 top-[calc(100%+10px)] z-[80] min-w-[220px] rounded-xl border border-slate-200/90 bg-white p-2 opacity-100 shadow-2xl shadow-slate-900/18 ring-1 ring-slate-900/5">
-                        <button
-                          type="button"
-                          className={actionMenuItem}
-                          onClick={() => {
-                            importSchema();
-                            setShowActionsMenu(false);
-                          }}
-                        >
-                          Import schema
-                        </button>
-                        <button
-                          type="button"
-                          className={actionMenuItem}
-                          onClick={() => {
-                            exportSchema();
-                            setShowActionsMenu(false);
-                          }}
-                        >
-                          Export schema
-                        </button>
-                        <button
-                          type="button"
-                          className={actionMenuItem}
-                          onClick={() => {
-                            downloadSchema();
-                            setShowActionsMenu(false);
-                          }}
-                        >
-                        Download JSON
-                      </button>
-                    </div>
-                  )}
-                </div>
-                </div>
-              </div>
+          <button
+            type="button"
+            className={`px-3 py-1.5 text-sm border rounded-md ${activePanel === "logs" ? "bg-blue-500 text-white" : "hover:bg-gray-100"}`}
+            onClick={() => setActivePanel(activePanel === "logs" ? null : "logs")}
+          >
+            Execution Logs
+          </button>
 
-              <div className="ml-auto flex flex-wrap items-center gap-3 lg:flex-nowrap">
-                <button type="button" className={toolbarBtn} onClick={() => fitView({ padding: 0.2 })}>
-                  Fit screen
-                </button>
-
-                <div className="hidden h-8 w-px bg-slate-200 lg:block" aria-hidden />
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowLogsPanel((value) => !value)}
-                    className={toolbarToggle}
-                  >
-                    {showLogsPanel ? 'Hide logs' : 'Show logs'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowSchemaPanel((value) => !value)}
-                    className={toolbarToggle}
-                  >
-                    {showSchemaPanel ? 'Hide schema' : 'Show schema'}
-                  </button>
-                </div>
-              </div>
-            </div>
+          <button
+            type="button"
+            className="px-3 py-1.5 text-sm border rounded-md hover:bg-gray-100"
+            onClick={() => setIsChatCollapsed((prev) => !prev)}
+          >
+            {isChatCollapsed ? 'Show AI Chat' : 'Hide AI Chat'}
+          </button>
 
           {message && (
             <div className="mt-3 flex justify-end">
@@ -573,72 +546,65 @@ function WorkflowCanvas() {
           </div>
         )}
 
-        <div className="flex min-h-0 flex-1">
-          <div
-            ref={reactFlowWrapper}
-            className={`canvas-wrap min-w-0 ${showSchemaPanel ? 'flex-[0_0_80%] border-r border-slate-200' : 'flex-1'}`}
-          >
-            <ReactFlow
-              nodes={displayNodes}
-              edges={displayEdges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              onDrop={onDrop}
-              onDragOver={onDragOver}
-              onSelectionChange={onSelectionChange}
-              nodeTypes={customNodeTypes}
-              fitView
-              deleteKeyCode={['Backspace', 'Delete']}
-              defaultEdgeOptions={{
-                type: 'smoothstep',
-                style: { stroke: '#cbd5e1', strokeWidth: 1.5 },
-                markerEnd: { type: 'arrowclosed', color: '#94a3b8', width: 12, height: 12 },
-              }}
-            >
-              <MiniMap
-                className="!rounded-lg !border !border-slate-200 !bg-white !shadow-md"
-                pannable
-                zoomable
+        <div className="builder-workspace">
+          <div className="builder-content">
+            <div style={{ display: 'flex', gap: '0', flex: 1, minHeight: 0 }}>
+              <div ref={reactFlowWrapper} className="canvas-wrap" style={canvasStyle}>
+                <ReactFlow
+                  nodes={displayNodes}
+                  edges={displayEdges}
+                  onNodesChange={onNodesChange}
+                  onEdgesChange={onEdgesChange}
+                  onConnect={onConnect}
+                  onDrop={onDrop}
+                  onDragOver={onDragOver}
+                  onSelectionChange={onSelectionChange}
+                  nodeTypes={customNodeTypes}
+                  fitView
+                  deleteKeyCode={['Backspace', 'Delete']}
+                  defaultEdgeOptions={{
+                    type: 'smoothstep',
+                    markerEnd: { type: 'arrowclosed' },
+                  }}
+                >
+                  <MiniMap pannable zoomable />
+                  <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
+                  <Controls showInteractive={false} />
+                </ReactFlow>
+              </div>
+
+              {activePanel === "schema" && (
+                <div className="schema-panel" style={{ flex: '0 0 20%' }}>
+                  <label htmlFor="hook-schema">Schema Output</label>
+                  <textarea
+                    id="hook-schema"
+                    value={serializedSchema}
+                    onChange={(event) => setSerializedSchema(event.target.value)}
+                    placeholder="Export schema here or paste to import..."
+                  />
+                </div>
+              )}
+            </div>
+
+            {activePanel === 'logs' && (
+              <ExecutionLogs
+                logs={engine.logs}
+                executionState={engine.state}
+                progress={engine.progress}
+                onClear={handleReset}
               />
-              <Background
-                variant={BackgroundVariant.Dots}
-                gap={20}
-                size={1}
-                color="#cbd5e1"
-                bgColor="#f1f5f9"
-                className="opacity-80"
-              />
-              <Controls
-                showInteractive={false}
-                className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-md [&_button]:border-slate-200 [&_button]:bg-white [&_button]:fill-slate-600 [&_button:hover]:bg-slate-50"
-              />
-            </ReactFlow>
+            )}
           </div>
 
-          {showSchemaPanel && (
-            <div className="schema-panel min-w-0 flex-[0_0_20%]">
-              <label htmlFor="hook-schema-side" className="text-xs font-semibold text-slate-700">
-                Hook schema
-              </label>
-              <textarea
-                id="hook-schema-side"
-                value={serializedSchema}
-                onChange={(event) => setSerializedSchema(event.target.value)}
-                placeholder="Export schema here or paste to import..."
+          <aside className={`chat-sidebar ${isChatCollapsed ? 'collapsed' : ''}`}>
+            {!isChatCollapsed && (
+              <WorkflowChatPanel
+                currentSchema={canvasToHookSchema(nodes, edges, clientCode)}
+                onApplySchema={applyAISchema}
               />
-            </div>
-          )}
+            )}
+          </aside>
         </div>
-
-        {showLogsPanel && (
-          <ExecutionLogs
-            logs={engine.logs}
-            executionState={engine.state}
-            progress={engine.progress}
-            onClear={handleReset}
-          />
-        )}
       </div>
     </div>
   );

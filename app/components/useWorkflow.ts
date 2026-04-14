@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import type { Node, Edge } from '@xyflow/react';
 import * as workflowActions from '@/app/actions/workflow';
 

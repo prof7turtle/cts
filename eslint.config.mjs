@@ -1,14 +1,24 @@
-import nextPlugin from "@next/eslint-plugin-next";
+import nextCoreWebVitals from 'eslint-config-next/core-web-vitals';
+import nextTypescript from 'eslint-config-next/typescript';
 
-export default [
+const config = [
+  ...nextCoreWebVitals,
+  ...nextTypescript,
   {
-    files: ["**/*.{js,jsx,ts,tsx}"],
-    plugins: {
-      "@next/next": nextPlugin,
-    },
+    ignores: ['Documentation/**', 'Dynamic Workflow/**'],
+  },
+  {
+    files: [
+      'app/actions/workflow.ts',
+      'app/api/graphql/route.ts',
+      'app/components/useWorkflow.ts',
+      'lib/graphql/resolvers.ts',
+      'lib/graphql/store.ts',
+    ],
     rules: {
-      ...nextPlugin.configs.recommended.rules,
-      ...nextPlugin.configs["core-web-vitals"].rules,
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
 ];
+
+export default config;

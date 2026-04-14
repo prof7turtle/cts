@@ -31,6 +31,8 @@ function BaseNode({ data, selected, type }: NodeProps) {
   const condition =
     typeof typedData.condition === 'string'
       ? typedData.condition
+      : typeof typedData.condition?.expression === 'string'
+      ? typedData.condition.expression
       : "Transaction.Type = 'Application'";
 
   const execClass = getExecClassName(typedData.executionStatus);

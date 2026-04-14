@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { ActionCategory } from './nodes/nodeTypes';
-
+import Editor from '@monaco-editor/react';
 interface CustomHook {
   hookName: string;
   category: ActionCategory;
@@ -144,15 +144,17 @@ export default function CustomHookModal({ onClose, onCreate }: CustomHookModalPr
                 <span className="code-editor-dot code-editor-dot-green" />
                 <span className="code-editor-filename">hook.ts</span>
               </div>
-              <textarea
-                id="code"
-                value={formData.code}
-                onChange={(e) => handleChange('code', e.target.value)}
-                placeholder={"export async function customHook(context) {\n  // write your hook here\n  return context;\n}"}
-                rows={18}
-                className="code-editor-textarea"
-                spellCheck={false}
-              />
+              'use client';
+
+
+
+<Editor
+  height="300px"
+  defaultLanguage="javascript"
+  value={selectedData.code || ''}
+  onChange={(value) => updateNodeData('code', value || '')}
+  theme="vs-dark"
+/>
             </div>
           </div>
 
