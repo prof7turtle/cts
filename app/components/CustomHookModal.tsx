@@ -135,15 +135,25 @@ export default function CustomHookModal({ onClose, onCreate }: CustomHookModalPr
             />
           </div>
 
-          <div className="form-group">
+          <div className="form-group form-group-code">
             <label htmlFor="code">Code</label>
-            <textarea
-              id="code"
-              value={formData.code}
-              onChange={(e) => handleChange('code', e.target.value)}
-              placeholder="Enter hook code"
-              rows={15}
-            />
+            <div className="code-editor-shell">
+              <div className="code-editor-topbar">
+                <span className="code-editor-dot code-editor-dot-red" />
+                <span className="code-editor-dot code-editor-dot-amber" />
+                <span className="code-editor-dot code-editor-dot-green" />
+                <span className="code-editor-filename">hook.ts</span>
+              </div>
+              <textarea
+                id="code"
+                value={formData.code}
+                onChange={(e) => handleChange('code', e.target.value)}
+                placeholder={"export async function customHook(context) {\n  // write your hook here\n  return context;\n}"}
+                rows={18}
+                className="code-editor-textarea"
+                spellCheck={false}
+              />
+            </div>
           </div>
 
           <div className="modal-actions">

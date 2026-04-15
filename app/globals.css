@@ -9,14 +9,15 @@
 html,
 body {
   height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  background: #f9fafb;
-  color: #1f2937;
+  font-family: var(--font-app), ui-sans-serif, system-ui, sans-serif;
+  background: #f1f5f9;
+  color: #1e293b;
 }
 
 .builder-layout {
   display: flex;
-  height: calc(100vh - 70px);
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -29,94 +30,61 @@ body {
   overflow: hidden;
 }
 
-.builder-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 14px 18px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.builder-toolbar label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #374151;
-}
-
-.builder-toolbar button {
-  border: 1px solid #d1d5db;
-  background: #ffffff;
-  color: #1f2937;
-  border-radius: 6px;
-  padding: 8px 14px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.builder-toolbar button:hover {
-  background: #f3f4f6;
-  border-color: #9ca3af;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-.builder-toolbar button:active {
-  background: #e5e7eb;
-}
+/* Toolbar layout is styled in WorkflowBuilder; keep shared inputs. */
 
 .toolbar-input {
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 16px;
   font-size: 13px;
+  line-height: 1.45;
   min-width: 160px;
+  min-height: 40px;
   background: #ffffff;
-  color: #1f2937;
+  color: #1e293b;
   transition: border-color 0.2s ease;
+  box-sizing: border-box;
 }
 
 .toolbar-input:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #1d4ed8;
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
 }
 
 .toolbar-message {
-  color: #2563eb;
+  color: #1d4ed8;
   font-size: 13px;
-  padding: 4px 8px;
+  line-height: 1.4;
+  padding: 8px 14px;
   background: #eff6ff;
-  border-radius: 4px;
+  border-radius: 8px;
   margin-left: auto;
 }
 
 .condition-panel {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  border-bottom: 1px solid #fcd34d;
-  padding: 12px 18px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  background: #fffbeb;
+  border-bottom: 1px solid #fde68a;
+  padding: 16px 20px 18px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 .condition-panel label {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-size: 13px;
   color: #78350f;
   font-weight: 600;
 }
 
 .condition-panel input {
-  border: 1px solid #f59e0b !important;
-  background: rgba(255, 255, 255, 0.8) !important;
+  border: 1px solid #fcd34d !important;
+  background: #ffffff !important;
   color: #78350f !important;
+  padding: 10px 14px !important;
+  min-height: 40px;
+  border-radius: 10px !important;
 }
 
 .canvas-wrap {
@@ -127,78 +95,75 @@ body {
 }
 
 .schema-panel {
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid #e2e8f0;
   background: #ffffff;
-  padding: 14px 18px;
+  padding: 16px 18px 18px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 -1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .schema-panel label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  color: #1f2937;
+  color: #1e293b;
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+  padding-top: 2px;
+  letter-spacing: 0.02em;
 }
 
 .schema-panel textarea {
   width: 100%;
   flex: 1;
-  font-family: 'Fira Code', Consolas, Monaco, monospace;
+  min-height: 120px;
+  font-family: ui-monospace, Consolas, Monaco, monospace;
   font-size: 12px;
-  line-height: 1.5;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  padding: 10px 12px;
-  background: #fafbfc;
-  color: #1f2937;
+  line-height: 1.6;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: #f8fafc;
+  color: #1e293b;
   resize: none;
   transition: border-color 0.2s ease;
+  box-sizing: border-box;
 }
 
 .schema-panel textarea:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #1d4ed8;
   background: #ffffff;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.1);
 }
 
 .nodes-panel {
-  width: 290px;
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid #e2e8f0;
   background: #ffffff;
-  color: #1f2937;
-  padding: 14px;
-  overflow-y: auto;
-  box-shadow: 1px 0 3px rgba(0, 0, 0, 0.05);
-}
-
-.nodes-panel h2 {
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 12px;
-  color: #111827;
+  color: #1e293b;
 }
 
 .library-search {
   width: 100%;
-  border-radius: 6px;
-  border: 1px solid #d1d5db;
-  background: #f3f4f6;
-  color: #1f2937;
-  padding: 8px 12px;
-  font-size: 13px;
-  margin-bottom: 12px;
-  transition: border-color 0.2s ease;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #1e293b;
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.45;
+  min-height: 44px;
+  box-sizing: border-box;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .library-search:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #1d4ed8;
   background: #ffffff;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.1);
 }
 
 .library-search::placeholder {
@@ -280,39 +245,75 @@ body {
   padding: 20px 10px;
 }
 
+/* Canvas nodes — lift + glow on hover (wrapper is .react-flow__node) */
 .workflow-node {
-  min-width: 190px;
-  border-radius: 8px;
+  min-width: 200px;
+  border-radius: 14px;
   background: #ffffff;
-  border: 2px solid #e5e7eb;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
-  transition: all 0.2s ease;
+  border: 1px solid #e2e8f0;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 6px 16px -4px rgba(15, 23, 42, 0.07);
+  overflow: visible;
+  transition:
+    transform 0.3s cubic-bezier(0.34, 1.45, 0.64, 1),
+    box-shadow 0.3s ease,
+    border-color 0.25s ease;
+  will-change: transform;
 }
 
-.workflow-node:hover {
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+.react-flow__node:hover {
+  z-index: 100 !important;
+}
+
+.react-flow__node:hover .workflow-node:not(.node-executing) {
+  border-color: rgba(186, 230, 253, 0.95);
+  box-shadow:
+    0 4px 6px -1px rgba(15, 23, 42, 0.05),
+    0 0 0 1px rgba(186, 230, 253, 0.7),
+    0 20px 40px -12px rgba(125, 211, 252, 0.2),
+    0 12px 28px -8px rgba(15, 23, 42, 0.08);
+}
+
+.react-flow__node:hover .workflow-node:not(.node-executing) .node-header {
+  filter: brightness(1.05) saturate(1.08);
+  transition: filter 0.3s ease;
 }
 
 .workflow-node.selected {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: #bae6fd;
+  box-shadow:
+    0 0 0 2px rgba(186, 230, 253, 0.9),
+    0 0 0 1px rgba(255, 255, 255, 0.8) inset,
+    0 14px 32px -10px rgba(125, 211, 252, 0.35);
 }
 
+.react-flow__handle {
+  transition:
+    box-shadow 0.25s ease;
+}
+
+.react-flow__node:hover .workflow-node .react-flow__handle {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.95), 0 4px 12px rgba(15, 23, 42, 0.18);
+}
+
+/* Header text color is set per-node (pastel fg) — never force white on light pastels */
 .node-header {
-  padding: 12px;
-  color: #ffffff;
-  border-radius: 6px 6px 0 0;
+  padding: 0;
+  border-radius: 0;
   display: flex;
   gap: 8px;
   align-items: center;
   font-size: 13px;
   font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: filter 0.3s ease;
 }
 
 .node-body {
-  padding: 12px;
-  background: #fafbfc;
+  padding: 16px 18px 18px;
+  border-radius: 0 0 13px 13px;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
 }
 
 .node-label {
@@ -320,7 +321,8 @@ body {
   color: #6b7280;
   text-transform: uppercase;
   letter-spacing: 0.3px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+  margin-top: 4px;
   font-weight: 600;
 }
 
@@ -328,43 +330,43 @@ body {
   font-size: 12px;
   color: #1f2937;
   font-weight: 500;
-  line-height: 1.4;
+  line-height: 1.55;
+  padding: 2px 0;
 }
 
 .decision-shape {
-  margin: 2px auto 8px;
+  margin: 6px auto 12px;
   width: 44px;
   height: 44px;
   transform: rotate(45deg);
-  border: 2px solid #d97706;
+  border: 2px solid #fed7aa;
   border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  color: #92400e;
   font-size: 10px;
 }
 
 .decision-shape::before {
   content: "IF";
   transform: rotate(-45deg);
-}
-
-.decision-shape {
-  color: transparent;
+  color: inherit;
 }
 
 .decision-paths {
-  margin-top: 8px;
+  margin-top: 12px;
+  padding: 8px 4px 0;
   display: flex;
   justify-content: space-between;
+  gap: 12px;
   font-size: 11px;
+  font-weight: 600;
   color: #475569;
 }
 
 .react-flow__background {
-  background: #f7fafd !important;
+  background: #f1f5f9 !important;
 }
 
 /* ── Canvas cursor visibility ─────────────────────── */
@@ -386,20 +388,22 @@ body {
 
 .react-flow__handle {
   cursor: crosshair !important;
+  z-index: 30 !important;
 }
 
 .react-flow__edge-path {
-  stroke-width: 2;
+  stroke: #cbd5e1;
+  stroke-width: 1.5;
 }
 
 .edge-exec-active .react-flow__edge-path {
   stroke: #16a34a !important;
-  stroke-width: 3.5 !important;
+  stroke-width: 2.5 !important;
 }
 
 .edge-exec-completed .react-flow__edge-path {
   stroke: #22c55e !important;
-  stroke-width: 3 !important;
+  stroke-width: 2 !important;
 }
 
 /* ── Execution Engine: Node Highlights ─────────────────────── */
@@ -417,34 +421,18 @@ body {
 }
 
 .workflow-node.node-executing {
-  border: 2.5px solid #22c55e !important;
+  border: 1px solid #22c55e !important;
   animation: nodeExecutingPulse 1s ease-in-out infinite;
 }
 
 .workflow-node.node-completed {
-  border: 2.5px solid #22c55e !important;
-  box-shadow: 0 0 8px 1px rgba(34, 197, 94, 0.25);
+  border: 1px solid #22c55e !important;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
 }
 
 .workflow-node.node-error {
-  border: 2.5px solid #ef4444 !important;
-  box-shadow: 0 0 10px 2px rgba(239, 68, 68, 0.35);
-}
-
-.node-status-indicator {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 700;
-  z-index: 10;
-  border: 2px solid #ffffff;
+  border: 1px solid #ef4444 !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
 }
 
 /* ── Execution Logs Panel ──────────────────────────────────── */
@@ -591,15 +579,18 @@ body {
 
 .exec-btn {
   border: none;
-  border-radius: 6px;
-  padding: 6px 12px;
+  border-radius: 8px;
+  padding: 8px 16px;
+  min-height: 38px;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  gap: 6px;
   transition: opacity 0.15s, background 0.15s;
+  box-sizing: border-box;
 }
 
 .exec-btn:disabled {
@@ -678,16 +669,16 @@ body {
   .builder-layout {
     flex-direction: column;
     height: auto;
-    max-height: calc(100vh - 70px);
+    max-height: 100%;
     overflow-y: auto;
   }
 
   .nodes-panel {
-    width: 100%;
-    max-height: 260px;
+    width: 100% !important;
+    max-height: 280px;
     height: auto;
     border-right: 0;
-    border-bottom: 1px solid #dbe3ef;
+    border-bottom: 1px solid #e2e8f0;
   }
 
   .toolbar-input {
@@ -699,21 +690,20 @@ body {
 
 .create-hook-btn {
   width: 100%;
-  border: 1px solid #8b5cf6;
-  background: linear-gradient(135deg, #8b5cf6, #a855f7);
+  border: 1px solid #1d4ed8;
+  background: #1d4ed8;
   color: #ffffff;
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 10px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   margin-bottom: 8px;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease;
 }
 
 .create-hook-btn:hover {
-  background: linear-gradient(135deg, #7c3aed, #9333ea);
-  box-shadow: 0 2px 4px rgba(139, 92, 246, 0.2);
+  background: #1e40af;
 }
 
 .custom-badge {
@@ -729,10 +719,6 @@ body {
   align-self: flex-start;
 }
 
-.custom-hook-node .node-header {
-  background: linear-gradient(135deg, #8b5cf6, #a855f7) !important;
-}
-
 .custom-hook-subtitle {
   font-size: 11px;
   color: #6b7280;
@@ -740,6 +726,8 @@ body {
   letter-spacing: 0.3px;
   font-weight: 600;
   text-align: center;
+  padding: 6px 12px 8px;
+  line-height: 1.4;
 }
 
 /* ── Modal Styles ─────────────────────────────────────────── */
@@ -764,7 +752,7 @@ body {
   backdrop-filter: blur(20px);
   border-radius: 16px;
   padding: 24px;
-  max-width: 500px;
+  max-width: 880px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
@@ -809,7 +797,7 @@ body {
 .modal-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
 .form-group {
@@ -860,6 +848,85 @@ body {
   resize: vertical;
   min-height: 120px;
   font-family: 'Fira Code', Consolas, Monaco, monospace;
+}
+
+.form-group-code {
+  gap: 10px;
+  width: 100%;
+}
+
+.code-editor-shell {
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(17, 24, 39, 0.98) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 14px 28px rgba(0, 0, 0, 0.22);
+}
+
+.code-editor-topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(15, 23, 42, 0.92);
+  padding: 12px 14px;
+}
+
+.code-editor-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.code-editor-dot-red {
+  background: #fb7185;
+}
+
+.code-editor-dot-amber {
+  background: #fbbf24;
+}
+
+.code-editor-dot-green {
+  background: #34d399;
+}
+
+.code-editor-filename {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #94a3b8;
+}
+
+.code-editor-textarea {
+  display: block;
+  min-height: 360px !important;
+  width: 100%;
+  min-width: 100%;
+  max-width: 100%;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #e2e8f0 !important;
+  padding: 18px 18px 22px !important;
+  font-family: 'Fira Code', Consolas, Monaco, monospace !important;
+  font-size: 13px !important;
+  line-height: 1.75 !important;
+  tab-size: 2;
+  resize: vertical;
+}
+
+.code-editor-textarea::placeholder {
+  color: #64748b;
+}
+
+.code-editor-textarea:focus {
+  box-shadow: none !important;
+  background: transparent !important;
 }
 
 .modal-actions {
