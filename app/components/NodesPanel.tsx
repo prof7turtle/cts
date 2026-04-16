@@ -7,6 +7,7 @@ import {
   type NodeDefinition,
 } from './nodes/nodeTypes';
 import CustomHookModal from './CustomHookModal';
+import { getPastelForSectionTitle, type PastelSet } from './nodes/pastelPalette';
 
 interface CustomHook {
   id: string;
@@ -20,36 +21,74 @@ interface CustomHook {
 
 interface NodesPanelProps {
   onDragStart: (event: React.DragEvent, nodeType: string, hookData?: CustomHook) => void;
+  isVisible: boolean;
+  onToggle: () => void;
 }
 
-const categoryOrder: ActionCategory[] = [
-  'Flow',
-  'Decision',
-  'Pre Hook',
-  'Post Hook',
+const GROUPS: { title: string; categories: ActionCategory[] }[] = [
+  { title: 'Flow', categories: ['Flow'] },
+  { title: 'Decision', categories: ['Decision'] },
+  { title: 'Pre Hook', categories: ['Pre Hook'] },
+  { title: 'Post Hook', categories: ['Post Hook'] },
 ];
+
+/** Hover / ring accents aligned with each section’s pastel family */
+const SECTION_TILE_ACCENT: Record<string, string> = {
+  Flow: 'hover:border-emerald-200 hover:from-white hover:to-emerald-50/60 hover:shadow-emerald-100/40 hover:ring-emerald-100/50',
+  Decision: 'hover:border-amber-200 hover:from-white hover:to-amber-50/60 hover:shadow-amber-100/40 hover:ring-amber-100/50',
+  'Pre Hook': 'hover:border-cyan-200 hover:from-white hover:to-cyan-50/60 hover:shadow-cyan-100/40 hover:ring-cyan-100/50',
+  'Post Hook': 'hover:border-rose-200 hover:from-white hover:to-rose-50/60 hover:shadow-rose-100/40 hover:ring-rose-100/50',
+};
+
+const SECTION_TITLE_STYLE: Record<string, string> = {
+  'Custom hooks': 'text-fuchsia-800/70',
+  Flow: 'text-emerald-800/70',
+  Decision: 'text-amber-900/60',
+  'Pre Hook': 'text-cyan-900/70',
+  'Post Hook': 'text-rose-900/70',
+};
+
+function tileBase(sectionTitle: string) {
+  const accent = SECTION_TILE_ACCENT[sectionTitle] ?? SECTION_TILE_ACCENT.Hooks;
+  return `group relative flex w-full cursor-grab items-start gap-4 overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 text-left shadow-sm ring-1 ring-slate-900/[0.02] transition-all duration-300 ease-out hover:-translate-y-1 hover:bg-gradient-to-br hover:shadow-lg ${accent} active:translate-y-0 active:cursor-grabbing`;
+}
 
 function ActionTile({
   action,
+  sectionTitle,
+  pastel,
   onDragStart,
 }: {
   action: NodeDefinition;
+  sectionTitle: string;
+  pastel: PastelSet;
   onDragStart: (event: React.DragEvent, nodeType: string, hookData?: CustomHook) => void;
 }) {
   return (
     <button
       type="button"
-      className="node-item"
       draggable
       onDragStart={(event) => onDragStart(event, action.type)}
       title={action.functionName}
+      className={tileBase(sectionTitle)}
     >
-      <span className="node-icon-badge" style={{ backgroundColor: action.color }}>
+      <span
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-sm font-extrabold tabular-nums transition-all duration-300 ease-out group-hover:scale-110 group-hover:shadow-md"
+        style={{
+          backgroundColor: pastel.bg,
+          color: pastel.fg,
+          boxShadow: `0 4px 12px -2px ${pastel.shadow}`,
+        }}
+      >
         {action.icon}
       </span>
-      <span className="node-text">
-        <span>{action.label}</span>
-        <small>{action.functionName}</small>
+      <span className="min-w-0 flex-1 pt-0.5">
+        <span className="block text-[15px] font-semibold leading-snug tracking-tight text-slate-800">
+          {action.label}
+        </span>
+        <span className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-slate-500">
+          {action.functionName}
+        </span>
       </span>
     </button>
   );
@@ -57,63 +96,79 @@ function ActionTile({
 
 function CustomHookTile({
   hook,
+  pastel,
   onDragStart,
 }: {
   hook: CustomHook;
+  pastel: PastelSet;
   onDragStart: (event: React.DragEvent, nodeType: string, hookData?: CustomHook) => void;
 }) {
   return (
     <button
-      type="button"
-      className="node-item"
       draggable
       onDragStart={(event) => onDragStart(event, `customHook-${hook.id}`, hook)}
       title={hook.functionName}
+      className="group relative flex w-[240px] cursor-grab items-center gap-3 overflow-hidden rounded-[14px] border border-slate-200 bg-white p-3 shadow-sm transition-all duration-300 hover:border-blue-200 hover:shadow-md active:cursor-grabbing mx-auto"
     >
-      <span className="node-icon-badge" style={{ background: 'linear-gradient(135deg, #8b5cf6, #a855f7)' }}>
+      <span
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-solid text-[11px] font-extrabold uppercase leading-none shadow-sm transition-all duration-300 group-hover:scale-105"
+        style={{
+          backgroundColor: pastel.bg,
+          color: pastel.fg,
+          borderColor: pastel.border,
+        }}
+      >
         CH
       </span>
-      <span className="node-text">
-        <span>{hook.hookName}</span>
-        <small>{hook.functionName}</small>
-        <span className="custom-badge">custom</span>
-      </span>
+      <div className="min-w-0 flex-1 text-left">
+        <span className="block truncate text-[13px] font-semibold tracking-tight text-slate-800">
+          {hook.hookName}
+        </span>
+        <span className="block truncate text-[11px] text-slate-500">
+          Custom Hook
+        </span>
+      </div>
     </button>
   );
 }
 
-export default function NodesPanel({ onDragStart }: NodesPanelProps) {
+function SectionTitle({ children, sectionKey }: { children: React.ReactNode; sectionKey: string }) {
+  const cls = SECTION_TITLE_STYLE[sectionKey] ?? 'text-slate-500';
+  return (
+    <h3 className={`mb-3 text-[11px] font-bold uppercase tracking-[0.12em] ${cls}`}>{children}</h3>
+  );
+}
+
+export default function NodesPanel({ onDragStart, isVisible, onToggle }: NodesPanelProps) {
   const [query, setQuery] = useState('');
   const [customHooks, setCustomHooks] = useState<CustomHook[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const customPastel = getPastelForSectionTitle('Custom hooks');
+
   const groupedActions = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     const filtered = nodeDefinitions.filter((action) => {
-      if (!normalizedQuery) {
-        return true;
-      }
-
+      if (!normalizedQuery) return true;
       return (
         action.label.toLowerCase().includes(normalizedQuery) ||
         action.functionName.toLowerCase().includes(normalizedQuery)
       );
     });
 
-    return categoryOrder
-      .map((category) => ({
-        category,
-        actions: filtered.filter((action) => action.category === category),
-      }))
-      .filter((group) => group.actions.length > 0);
+    return GROUPS.map((group) => ({
+      title: group.title,
+      actions: filtered.filter((action) => group.categories.includes(action.category)),
+    })).filter((g) => g.actions.length > 0);
   }, [query]);
 
   const filteredCustomHooks = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     if (!normalizedQuery) return customHooks;
-    return customHooks.filter((hook) =>
-      hook.hookName.toLowerCase().includes(normalizedQuery) ||
-      hook.functionName.toLowerCase().includes(normalizedQuery)
+    return customHooks.filter(
+      (hook) =>
+        hook.hookName.toLowerCase().includes(normalizedQuery) ||
+        hook.functionName.toLowerCase().includes(normalizedQuery)
     );
   }, [query, customHooks]);
 
@@ -127,49 +182,98 @@ export default function NodesPanel({ onDragStart }: NodesPanelProps) {
   };
 
   return (
-    <aside className="nodes-panel">
-      <h2>Action Library</h2>
-      <input
-        className="library-search"
-        placeholder="Search actions..."
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-      />
-
-      {/* Custom Hooks Section */}
-      <div>
-        <div className="category-title">Custom Hooks</div>
-        <button
-          type="button"
-          className="create-hook-btn"
-          onClick={() => setIsModalOpen(true)}
-        >
-          + Create Hook
-        </button>
-        {filteredCustomHooks.map((hook) => (
-          <CustomHookTile key={hook.id} hook={hook} onDragStart={onDragStart} />
-        ))}
+    <aside 
+      className={`nodes-panel flex shrink-0 flex-col overflow-hidden bg-white shadow-[4px_0_24px_-12px_rgba(15,23,42,0.1)] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+        isVisible ? 'w-[340px] border-r border-slate-200' : 'w-0 border-r-0'
+      }`}
+    >
+      <div className="w-[340px] h-full flex flex-col overflow-y-auto">
+        <div className="sticky top-0 z-[1] shrink-0 border-b border-slate-200/70 bg-white/90 px-6 pb-5 pt-6 backdrop-blur-md">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold tracking-tight text-slate-800">Action library</h2>
+            <button
+              type="button"
+              onClick={onToggle}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 focus:outline-none"
+              title="Toggle Library"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-slate-500">
+            Drag a block onto the canvas to build your flow
+          </p>
+          <input
+            className="library-search mt-5"
+            placeholder="Search by name…"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          aria-label="Search actions"
+        />
       </div>
 
-      {groupedActions.map((group) => (
-        <div key={group.category}>
-          <div className="category-title">{group.category}</div>
-          {group.actions.map((action) => (
-            <ActionTile key={action.type} action={action} onDragStart={onDragStart} />
-          ))}
-        </div>
-      ))}
+      <div className="flex flex-col gap-8 px-6 py-8">
+        <section>
+          <SectionTitle sectionKey="Custom hooks">Custom hooks</SectionTitle>
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            className="mb-4 w-full rounded-2xl border border-violet-200/80 px-5 py-4 text-sm font-semibold leading-snug shadow-sm transition-all duration-300 hover:shadow-md active:scale-[0.99]"
+            style={{
+              background: customPastel.bg,
+              color: customPastel.fg,
+              boxShadow: `0 4px 14px -4px ${customPastel.shadow}`,
+            }}
+          >
+            + Create hook
+          </button>
+          <div className="flex flex-col gap-3">
+            {filteredCustomHooks.map((hook) => (
+              <CustomHookTile
+                key={hook.id}
+                hook={hook}
+                pastel={customPastel}
+                onDragStart={onDragStart}
+              />
+            ))}
+          </div>
+        </section>
 
-      {groupedActions.length === 0 && filteredCustomHooks.length === 0 && (
-        <p className="empty-library">No action found for this search.</p>
-      )}
+        {groupedActions.map((group) => {
+          const pastel = getPastelForSectionTitle(group.title);
+          return (
+            <section key={group.title}>
+              <SectionTitle sectionKey={group.title}>{group.title}</SectionTitle>
+              <div className="flex flex-col gap-3">
+                {group.actions.map((action) => (
+                  <ActionTile
+                    key={action.type}
+                    action={action}
+                    sectionTitle={group.title}
+                    pastel={pastel}
+                    onDragStart={onDragStart}
+                  />
+                ))}
+              </div>
+            </section>
+          );
+        })}
+
+        {groupedActions.length === 0 && filteredCustomHooks.length === 0 && (
+          <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-12 text-center text-[13px] leading-relaxed text-slate-500">
+            No actions match your search. Try another term.
+          </p>
+        )}
+      </div>
 
       {isModalOpen && (
-        <CustomHookModal
-          onClose={() => setIsModalOpen(false)}
-          onCreate={handleCreateHook}
-        />
+        <CustomHookModal onClose={() => setIsModalOpen(false)} onCreate={handleCreateHook} />
       )}
+      </div>
     </aside>
   );
 }
