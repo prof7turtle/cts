@@ -21,6 +21,8 @@ interface CustomHook {
 
 interface NodesPanelProps {
   onDragStart: (event: React.DragEvent, nodeType: string, hookData?: CustomHook) => void;
+  isVisible: boolean;
+  onToggle: () => void;
 }
 
 const GROUPS: { title: string; categories: ActionCategory[] }[] = [
@@ -103,40 +105,29 @@ function CustomHookTile({
 }) {
   return (
     <button
-      type="button"
       draggable
       onDragStart={(event) => onDragStart(event, `customHook-${hook.id}`, hook)}
       title={hook.functionName}
-      className="group relative flex w-full cursor-grab items-start gap-4 overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 text-left shadow-sm ring-1 ring-slate-900/[0.02] transition-all duration-300 ease-out hover:-translate-y-1 hover:border-violet-200 hover:bg-gradient-to-br hover:from-white hover:to-violet-50/50 hover:shadow-lg hover:shadow-violet-100/40 hover:ring-violet-100/50 active:translate-y-0 active:cursor-grabbing"
+      className="group relative flex w-[240px] cursor-grab items-center gap-3 overflow-hidden rounded-[14px] border border-slate-200 bg-white p-3 shadow-sm transition-all duration-300 hover:border-blue-200 hover:shadow-md active:cursor-grabbing mx-auto"
     >
       <span
-        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xs font-extrabold tracking-wide transition-all duration-300 ease-out group-hover:scale-110 group-hover:shadow-md"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-solid text-[11px] font-extrabold uppercase leading-none shadow-sm transition-all duration-300 group-hover:scale-105"
         style={{
           backgroundColor: pastel.bg,
           color: pastel.fg,
-          boxShadow: `0 4px 12px -2px ${pastel.shadow}`,
+          borderColor: pastel.border,
         }}
       >
         CH
       </span>
-      <span className="min-w-0 flex-1 pt-0.5">
-        <span className="block text-[15px] font-semibold leading-snug tracking-tight text-slate-800">
+      <div className="min-w-0 flex-1 text-left">
+        <span className="block truncate text-[13px] font-semibold tracking-tight text-slate-800">
           {hook.hookName}
         </span>
-        <span className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-slate-500">
-          {hook.functionName}
+        <span className="block truncate text-[11px] text-slate-500">
+          Custom Hook
         </span>
-        <span
-          className="mt-3 inline-flex min-h-[1.75rem] items-center rounded-full border border-solid px-3 py-1.5 text-[10px] font-bold uppercase leading-none tracking-wider shadow-sm transition-colors"
-          style={{
-            background: pastel.bg,
-            color: pastel.fg,
-            borderColor: pastel.border,
-          }}
-        >
-          Custom
-        </span>
-      </span>
+      </div>
     </button>
   );
 }
@@ -148,7 +139,7 @@ function SectionTitle({ children, sectionKey }: { children: React.ReactNode; sec
   );
 }
 
-export default function NodesPanel({ onDragStart }: NodesPanelProps) {
+export default function NodesPanel({ onDragStart, isVisible, onToggle }: NodesPanelProps) {
   const [query, setQuery] = useState('');
   const [customHooks, setCustomHooks] = useState<CustomHook[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -191,15 +182,34 @@ export default function NodesPanel({ onDragStart }: NodesPanelProps) {
   };
 
   return (
-    <aside className="nodes-panel flex w-[min(100%,340px)] shrink-0 flex-col overflow-y-auto border-r border-slate-200/80 bg-gradient-to-b from-emerald-50/20 via-white to-violet-50/15 shadow-[4px_0_24px_-12px_rgba(15,23,42,0.06)]">
-      <div className="sticky top-0 z-[1] border-b border-slate-200/70 bg-white/90 px-6 pb-5 pt-6 backdrop-blur-md">
-        <h2 className="text-lg font-semibold tracking-tight text-slate-800">Action library</h2>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-slate-500">
-          Drag a block onto the canvas to build your flow
-        </p>
-        <input
-          className="library-search mt-5"
-          placeholder="Search by name…"
+    <aside 
+      className={`nodes-panel flex shrink-0 flex-col overflow-hidden bg-white shadow-[4px_0_24px_-12px_rgba(15,23,42,0.1)] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+        isVisible ? 'w-[340px] border-r border-slate-200' : 'w-0 border-r-0'
+      }`}
+    >
+      <div className="w-[340px] h-full flex flex-col overflow-y-auto">
+        <div className="sticky top-0 z-[1] shrink-0 border-b border-slate-200/70 bg-white/90 px-6 pb-5 pt-6 backdrop-blur-md">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold tracking-tight text-slate-800">Action library</h2>
+            <button
+              type="button"
+              onClick={onToggle}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 focus:outline-none"
+              title="Toggle Library"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-slate-500">
+            Drag a block onto the canvas to build your flow
+          </p>
+          <input
+            className="library-search mt-5"
+            placeholder="Search by name…"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           aria-label="Search actions"
@@ -263,6 +273,7 @@ export default function NodesPanel({ onDragStart }: NodesPanelProps) {
       {isModalOpen && (
         <CustomHookModal onClose={() => setIsModalOpen(false)} onCreate={handleCreateHook} />
       )}
+      </div>
     </aside>
   );
 }

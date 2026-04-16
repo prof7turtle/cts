@@ -144,17 +144,13 @@ export default function CustomHookModal({ onClose, onCreate }: CustomHookModalPr
                 <span className="code-editor-dot code-editor-dot-green" />
                 <span className="code-editor-filename">hook.ts</span>
               </div>
-              'use client';
-
-
-
-<Editor
-  height="300px"
-  defaultLanguage="javascript"
-  value={selectedData.code || ''}
-  onChange={(value) => updateNodeData('code', value || '')}
-  theme="vs-dark"
-/>
+              <Editor
+                height="300px"
+                defaultLanguage="javascript"
+                value={formData.code}
+                onChange={(value) => handleChange('code', value ?? '')}
+                theme="vs-dark"
+              />
             </div>
           </div>
 

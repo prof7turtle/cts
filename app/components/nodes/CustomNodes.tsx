@@ -51,7 +51,7 @@ function BaseNode({ data, selected, type }: NodeProps) {
       />
 
       <div
-        className="node-header flex min-h-[3rem] items-center gap-3 rounded-t-[13px] border-b px-5 py-3.5 text-[13px] font-semibold leading-snug"
+        className="node-header flex min-h-[3rem] items-center gap-3 rounded-t-[13px] border-b px-4 py-3 text-[13px] font-semibold leading-snug"
         style={{
           background: pastel.bg,
           color: pastel.fg,
