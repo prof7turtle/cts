@@ -268,7 +268,7 @@ export function canvasToHookSchema(
   clientCode: string
 ): HookConfig {
   const actionNodes = sortNodesByPosition(
-    nodes.filter((node) => node.type !== 'start' && node.type !== 'end')
+    nodes.filter((node) => node.type !== 'start' && node.type !== 'end' && node.type !== 'requestNameLabel')
   );
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
   const incomingByTarget = new Map<string, Edge[]>();
@@ -357,29 +357,84 @@ function mapFunctionToNodeType(functionName: string): string {
   return matched?.type ?? 'generateQuoteNumber';
 }
 
-export function hookSchemaToCanvas(config: HookConfig): {
-  nodes: Node[];
-  edges: Edge[];
-} {
-  const combinedActions = [
-    ...(config.Hooks.Pre ?? []).flatMap((entry) => entry.Actions ?? []),
-    ...(config.Hooks.Post ?? []).flatMap((entry) => entry.Actions ?? []),
-  ];
+/**
+ * Represents the actions grouped under a single RequestName,
+ * combining both Pre and Post hooks for that request.
+ */
+interface RequestNameGroup {
+  requestName: string;
+  preActions: HookAction[];
+  postActions: HookAction[];
+}
 
-  const nodes: Node[] = [
-    {
-      id: 'start',
-      type: 'start',
-      position: { x: 320, y: 30 },
-      data: { label: 'Start' },
-    },
-  ];
+/**
+ * Groups all Pre and Post hook entries by their RequestName.
+ * Returns an ordered list of groups (preserving first-seen order).
+ */
+function groupHooksByRequestName(config: HookConfig): RequestNameGroup[] {
+  const groupMap = new Map<string, RequestNameGroup>();
+  const order: string[] = [];
+
+  for (const entry of config.Hooks.Pre ?? []) {
+    const name = entry.RequestName;
+    if (!groupMap.has(name)) {
+      groupMap.set(name, { requestName: name, preActions: [], postActions: [] });
+      order.push(name);
+    }
+    groupMap.get(name)!.preActions.push(...(entry.Actions ?? []));
+  }
+
+  for (const entry of config.Hooks.Post ?? []) {
+    const name = entry.RequestName;
+    if (!groupMap.has(name)) {
+      groupMap.set(name, { requestName: name, preActions: [], postActions: [] });
+      order.push(name);
+    }
+    groupMap.get(name)!.postActions.push(...(entry.Actions ?? []));
+  }
+
+  return order.map((name) => groupMap.get(name)!);
+}
+
+/**
+ * Builds a single vertical workflow column for a RequestName group.
+ * Returns the nodes, edges, and the max Y reached (for alignment).
+ */
+function buildWorkflowColumn(
+  group: RequestNameGroup,
+  columnIndex: number,
+  columnX: number,
+  columnWidth: number,
+  nodeIndexRef: { value: number },
+  edgeIndexRef: { value: number },
+): { nodes: Node[]; edges: Edge[] } {
+  const nodes: Node[] = [];
   const edges: Edge[] = [];
+  const centerX = columnX + columnWidth / 2 - 95; // center nodes within column
 
-  let mainY = 150;
-  let nodeIndex = 1;
-  let edgeIndex = 1;
-  let mainCursorNodeId = 'start';
+  // ─── Request Name Label (annotation node) ───────────────
+  const labelNodeId = `label-${columnIndex}`;
+  nodes.push({
+    id: labelNodeId,
+    type: 'requestNameLabel',
+    position: { x: columnX, y: 10 },
+    data: { label: `Request Name:\n${group.requestName}`, requestName: group.requestName },
+    draggable: false,
+    selectable: false,
+    connectable: false,
+  } as Node);
+
+  // ─── Start Node ─────────────────────────────────────────
+  const startId = `start-${columnIndex}`;
+  nodes.push({
+    id: startId,
+    type: 'start',
+    position: { x: centerX, y: 80 },
+    data: { label: 'Start' },
+  });
+
+  let mainY = 210;
+  let mainCursorNodeId = startId;
   let activeCondition: ActiveConditionState | null = null;
 
   const connectNodes = (
@@ -388,7 +443,7 @@ export function hookSchemaToCanvas(config: HookConfig): {
     sourceHandle?: BranchPath
   ) => {
     edges.push({
-      id: `e-${edgeIndex++}`,
+      id: `e-${edgeIndexRef.value++}`,
       source,
       target,
       sourceHandle: sourceHandle || undefined,
@@ -404,7 +459,7 @@ export function hookSchemaToCanvas(config: HookConfig): {
     const type = mapFunctionToNodeType(action.FunctionName);
     const definition = nodeDefinitionByType[type];
     const node = {
-      id: `n-${nodeIndex++}`,
+      id: `n-${nodeIndexRef.value++}`,
       type,
       position: { x, y },
       data: {
@@ -414,6 +469,7 @@ export function hookSchemaToCanvas(config: HookConfig): {
         isEndpoint: action.isEndpoint ?? false,
         path: action.Path ?? '',
         condition: action.Condition,
+        requestName: group.requestName,
       },
     } satisfies Node;
     nodes.push(node);
@@ -421,9 +477,7 @@ export function hookSchemaToCanvas(config: HookConfig): {
   };
 
   const joinActiveCondition = (targetNodeId: string) => {
-    if (!activeCondition) {
-      return;
-    }
+    if (!activeCondition) return;
 
     if (activeCondition.yesTailId) {
       connectNodes(activeCondition.yesTailId, targetNodeId);
@@ -438,15 +492,19 @@ export function hookSchemaToCanvas(config: HookConfig): {
     }
   };
 
-  for (const action of combinedActions) {
+  // Process all actions (pre then post) for this request name
+  const allActions = [...group.preActions, ...group.postActions];
+
+  for (const action of allActions) {
     if (isConditionAction(action)) {
       const conditionNode = {
-        id: `n-${nodeIndex++}`,
+        id: `n-${nodeIndexRef.value++}`,
         type: 'ifCondition',
-        position: { x: 320, y: mainY },
+        position: { x: centerX, y: mainY },
         data: {
           label: 'If / Else',
           condition: action.Condition,
+          requestName: group.requestName,
         },
       } satisfies Node;
       nodes.push(conditionNode);
@@ -480,7 +538,7 @@ export function hookSchemaToCanvas(config: HookConfig): {
     if (activeCondition && explicitPath) {
       activeCondition.hasExplicitBranchAction = true;
       const isYesPath = explicitPath === 'yes';
-      const nodeX = isYesPath ? 220 : 420;
+      const nodeX = isYesPath ? centerX - 100 : centerX + 100;
       const nodeY = isYesPath
         ? activeCondition.yesNextY
         : activeCondition.noNextY;
@@ -508,7 +566,7 @@ export function hookSchemaToCanvas(config: HookConfig): {
     }
 
     if (activeCondition && !activeCondition.hasExplicitBranchAction) {
-      const branchNode = createActionNode(action, 220, activeCondition.yesNextY);
+      const branchNode = createActionNode(action, centerX - 100, activeCondition.yesNextY);
       if (activeCondition.yesTailId) {
         connectNodes(activeCondition.yesTailId, branchNode.id);
       } else {
@@ -523,7 +581,7 @@ export function hookSchemaToCanvas(config: HookConfig): {
     const nextMainY = activeCondition
       ? Math.max(mainY, activeCondition.yesNextY, activeCondition.noNextY)
       : mainY;
-    const actionNode = createActionNode(action, 320, nextMainY);
+    const actionNode = createActionNode(action, centerX, nextMainY);
 
     if (activeCondition) {
       joinActiveCondition(actionNode.id);
@@ -536,13 +594,15 @@ export function hookSchemaToCanvas(config: HookConfig): {
     mainY = nextMainY + 130;
   }
 
+  // ─── End Node ───────────────────────────────────────────
   const endY = activeCondition
     ? Math.max(mainY, activeCondition.yesNextY, activeCondition.noNextY)
     : mainY;
+  const endId = `end-${columnIndex}`;
   const endNode = {
-    id: 'end',
+    id: endId,
     type: 'end',
-    position: { x: 320, y: endY },
+    position: { x: centerX, y: endY },
     data: { label: 'End' },
   } satisfies Node;
   nodes.push(endNode);
@@ -554,4 +614,64 @@ export function hookSchemaToCanvas(config: HookConfig): {
   }
 
   return { nodes, edges };
+}
+
+export function hookSchemaToCanvas(config: HookConfig): {
+  nodes: Node[];
+  edges: Edge[];
+} {
+  const groups = groupHooksByRequestName(config);
+
+  // If only one request name or no groups, fall back to single-column layout
+  // but still use the new column-based approach for consistency
+  if (groups.length === 0) {
+    return {
+      nodes: [
+        {
+          id: 'start',
+          type: 'start',
+          position: { x: 320, y: 80 },
+          data: { label: 'Start' },
+        },
+        {
+          id: 'end',
+          type: 'end',
+          position: { x: 320, y: 210 },
+          data: { label: 'End' },
+        },
+      ],
+      edges: [
+        {
+          id: 'e-1',
+          source: 'start',
+          target: 'end',
+          type: 'smoothstep',
+        },
+      ],
+    };
+  }
+
+  const COLUMN_WIDTH = 420;
+  const COLUMN_GAP = 60;
+  const nodeIndexRef = { value: 1 };
+  const edgeIndexRef = { value: 1 };
+
+  const allNodes: Node[] = [];
+  const allEdges: Edge[] = [];
+
+  for (let i = 0; i < groups.length; i++) {
+    const columnX = i * (COLUMN_WIDTH + COLUMN_GAP);
+    const { nodes, edges } = buildWorkflowColumn(
+      groups[i],
+      i,
+      columnX,
+      COLUMN_WIDTH,
+      nodeIndexRef,
+      edgeIndexRef,
+    );
+    allNodes.push(...nodes);
+    allEdges.push(...edges);
+  }
+
+  return { nodes: allNodes, edges: allEdges };
 }
