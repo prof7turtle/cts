@@ -1,11 +1,41 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import WorkflowBuilder from './components/WorkflowBuilder';
 import WorkflowList from './components/WorkflowList';
 
 export default function HomePage() {
-  const [view, setView] = useState<'list' | 'builder'>('list');
+  const router = useRouter();
+  const [view, setViewState] = useState<'list' | 'builder'>('list');
+
+  useEffect(() => {
+    const syncViewFromUrl = () => {
+      const params = new URLSearchParams(window.location.search);
+      setViewState(params.get('view') === 'builder' ? 'builder' : 'list');
+    };
+
+    syncViewFromUrl();
+    window.addEventListener('popstate', syncViewFromUrl);
+
+    return () => {
+      window.removeEventListener('popstate', syncViewFromUrl);
+    };
+  }, []);
+
+  const setView = (nextView: 'list' | 'builder') => {
+    const params = new URLSearchParams(window.location.search);
+
+    if (nextView === 'builder') {
+      params.set('view', 'builder');
+    } else {
+      params.delete('view');
+    }
+
+    const query = params.toString();
+    setViewState(nextView);
+    router.replace(query ? `/?${query}` : '/', { scroll: false });
+  };
 
   return (
     <div style={{ height: '100vh', overflow: 'hidden', backgroundColor: '#f9f9f9' }}>
