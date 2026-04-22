@@ -6,6 +6,7 @@ import { nodeDefinitionByType } from './nodeTypes';
 import type { BuilderNodeData } from '../hookSchema';
 import type { NodeExecStatus } from '../useExecutionEngine';
 import CustomHookNode from './CustomHookNode';
+import RequestNameLabelNode from './RequestNameLabelNode';
 
 function getExecClassName(status: NodeExecStatus | undefined): string {
   switch (status) {
@@ -53,8 +54,8 @@ function BaseNode({ data, selected, type }: NodeProps) {
     typeof typedData.condition === 'string'
       ? typedData.condition
       : typeof typedData.condition?.expression === 'string'
-      ? typedData.condition.expression
-      : "Transaction.Type = 'Application'";
+        ? typedData.condition.expression
+        : "Transaction.Type = 'Application'";
 
   const execClass = getExecClassName(typedData.executionStatus);
 
@@ -114,5 +115,5 @@ export const customNodeTypes = {
     Object.keys(nodeDefinitionByType).map((type) => [type, MemoNode])
   ),
   customHook: CustomHookNode,
+  requestNameLabel: RequestNameLabelNode,
 };
-

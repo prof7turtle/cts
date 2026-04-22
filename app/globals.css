@@ -497,6 +497,37 @@ body {
   color: #475569;
 }
 
+/* ── Request Name Label (workflow column header) ────────── */
+
+.request-name-label-node {
+  min-width: 260px;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #f0f4ff 0%, #e8ecf8 100%);
+  border: 1.5px solid #c7d2fe;
+  border-radius: 12px;
+  text-align: center;
+  pointer-events: none;
+  user-select: none;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.08);
+}
+
+.request-name-label-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6366f1;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 4px;
+}
+
+.request-name-label-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e1b4b;
+  font-family: 'Fira Code', Consolas, Monaco, monospace;
+  word-break: break-all;
+}
+
 .react-flow__background {
   background: #f7fafd !important;
 }
