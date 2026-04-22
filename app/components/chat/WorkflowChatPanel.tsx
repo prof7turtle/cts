@@ -13,6 +13,7 @@ export default function WorkflowChatPanel({
   onApplySchema,
 }: WorkflowChatProps) {
   const [prompt, setPrompt] = useState('');
+  const [status, setStatus] = useState<string | null>(null);
   const appliedSignature = useRef<string>('');
   const listRef = useRef<HTMLDivElement | null>(null);
 
@@ -27,22 +28,21 @@ export default function WorkflowChatPanel({
     const latestAssistant = reversed.find((message) => message.role === 'assistant');
     return latestAssistant ? getMessageText(latestAssistant) : '';
   }, [messages]);
-  const latestPayload = useMemo(
-    () => (latestAssistantText ? extractAgentPayload(latestAssistantText) : null),
-    [latestAssistantText]
-  );
   const isResponding = chatStatus === 'submitted' || chatStatus === 'streaming';
-  const status = latestPayload?.hookConfig ? 'Applied HookConfig from chat response.' : null;
 
   useEffect(() => {
-    if (!latestPayload?.hookConfig) return;
+    if (!latestAssistantText) return;
 
-    const signature = JSON.stringify(latestPayload);
+    const payload = extractAgentPayload(latestAssistantText);
+    const signature = JSON.stringify(payload);
     if (signature === appliedSignature.current) return;
 
-    onApplySchema(normalizeHookConfigConditions(latestPayload.hookConfig));
-    appliedSignature.current = signature;
-  }, [latestPayload, onApplySchema]);
+    if (payload.hookConfig) {
+      onApplySchema(normalizeHookConfigConditions(payload.hookConfig));
+      setStatus('Applied HookConfig from chat response.');
+      appliedSignature.current = signature;
+    }
+  }, [latestAssistantText, onApplySchema]);
 
   useEffect(() => {
     if (!listRef.current) return;
@@ -54,6 +54,7 @@ export default function WorkflowChatPanel({
     if (!text || isResponding) {
       return;
     }
+    setStatus(null);
     await sendMessage(
       { text },
       {
