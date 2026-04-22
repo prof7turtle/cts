@@ -28,7 +28,9 @@ interface ExecutionLogsProps {
   logs: LogEntry[];
   executionState: ExecutionState;
   progress: { completed: number; total: number };
-  onClear: () => void;
+  onClear?: () => void;
+  showHeader?: boolean;
+  emptyMessage?: string;
 }
 
 export default function ExecutionLogs({
@@ -36,6 +38,8 @@ export default function ExecutionLogs({
   executionState,
   progress,
   onClear,
+  showHeader = true,
+  emptyMessage,
 }: ExecutionLogsProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -59,35 +63,39 @@ export default function ExecutionLogs({
   return (
     <div className="exec-logs-panel">
       {/* Header */}
-      <div className="exec-logs-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontWeight: 700, fontSize: '13px', color: '#e2e8f0' }}>
-            Execution Logs
-          </span>
-          <span
-            className="exec-state-badge"
-            style={{ background: current.color }}
-          >
-            {current.text}
-          </span>
-          {progress.total > 0 && (
-            <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-              {progress.completed}/{progress.total} nodes
+      {showHeader && (
+        <div className="exec-logs-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontWeight: 700, fontSize: '13px', color: '#e2e8f0' }}>
+              Execution Logs
             </span>
+            <span
+              className="exec-state-badge"
+              style={{ background: current.color }}
+            >
+              {current.text}
+            </span>
+            {progress.total > 0 && (
+              <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                {progress.completed}/{progress.total} nodes
+              </span>
+            )}
+          </div>
+          {onClear && (
+            <button
+              type="button"
+              className="exec-logs-clear-btn"
+              onClick={onClear}
+              title="Clear logs"
+            >
+              Clear
+            </button>
           )}
         </div>
-        <button
-          type="button"
-          className="exec-logs-clear-btn"
-          onClick={onClear}
-          title="Clear logs"
-        >
-          Clear
-        </button>
-      </div>
+      )}
 
       {/* Progress bar */}
-      {progress.total > 0 && (
+      {showHeader && progress.total > 0 && (
         <div className="exec-progress-bar-track">
           <div
             className="exec-progress-bar-fill"
@@ -108,7 +116,7 @@ export default function ExecutionLogs({
       <div className="exec-logs-scroll" ref={scrollRef}>
         {logs.length === 0 ? (
           <div className="exec-logs-empty">
-            No logs yet. Click <strong>▶ Run</strong> to execute the workflow.
+            {emptyMessage ?? <><span>Nothing to display yet. Execute the workflow to see execution logs.</span></>}
           </div>
         ) : (
           logs.map((entry) => {

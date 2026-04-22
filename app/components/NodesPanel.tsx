@@ -1,22 +1,17 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   nodeDefinitions,
   type ActionCategory,
   type NodeDefinition,
 } from './nodes/nodeTypes';
-import CustomHookModal from './CustomHookModal';
-
-interface CustomHook {
-  id: string;
-  hookName: string;
-  category: ActionCategory;
-  functionName: string;
-  moduleName: string;
-  condition?: string;
-  code: string;
-}
+import {
+  getCustomHooks,
+  subscribeToCustomHooks,
+  type CustomHook,
+} from './customHooksStore';
 
 interface NodesPanelProps {
   onDragStart: (event: React.DragEvent, nodeType: string, hookData?: CustomHook) => void;
@@ -58,34 +53,55 @@ function ActionTile({
 function CustomHookTile({
   hook,
   onDragStart,
+  onEdit,
 }: {
   hook: CustomHook;
   onDragStart: (event: React.DragEvent, nodeType: string, hookData?: CustomHook) => void;
+  onEdit: (hookId: string) => void;
 }) {
   return (
-    <button
-      type="button"
-      className="node-item"
-      draggable
-      onDragStart={(event) => onDragStart(event, `customHook-${hook.id}`, hook)}
-      title={hook.functionName}
-    >
-      <span className="node-icon-badge" style={{ background: 'linear-gradient(135deg, #8b5cf6, #a855f7)' }}>
-        CH
-      </span>
-      <span className="node-text">
-        <span>{hook.hookName}</span>
-        <small>{hook.functionName}</small>
-        <span className="custom-badge">custom</span>
-      </span>
-    </button>
+    <div className="custom-hook-item-row">
+      <button
+        type="button"
+        className="node-item"
+        draggable
+        onDragStart={(event) => onDragStart(event, `customHook-${hook.id}`, hook)}
+        title={hook.functionName}
+      >
+        <span className="node-icon-badge" style={{ background: 'linear-gradient(135deg, #8b5cf6, #a855f7)' }}>
+          CH
+        </span>
+        <span className="node-text">
+          <span>{hook.hookName}</span>
+          <small>{hook.functionName}</small>
+          <span className="custom-badge">custom</span>
+        </span>
+      </button>
+
+      <button
+        type="button"
+        className="custom-hook-edit-btn"
+        onClick={() => onEdit(hook.id)}
+        title="Edit custom hook"
+      >
+        Edit
+      </button>
+    </div>
   );
 }
 
 export default function NodesPanel({ onDragStart }: NodesPanelProps) {
+  const router = useRouter();
   const [query, setQuery] = useState('');
   const [customHooks, setCustomHooks] = useState<CustomHook[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    setCustomHooks(getCustomHooks());
+
+    return subscribeToCustomHooks(() => {
+      setCustomHooks(getCustomHooks());
+    });
+  }, []);
 
   const groupedActions = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -117,13 +133,8 @@ export default function NodesPanel({ onDragStart }: NodesPanelProps) {
     );
   }, [query, customHooks]);
 
-  const handleCreateHook = (hook: Omit<CustomHook, 'id'>) => {
-    const newHook: CustomHook = {
-      ...hook,
-      id: `custom-${Date.now()}`,
-    };
-    setCustomHooks((prev) => [...prev, newHook]);
-    setIsModalOpen(false);
+  const handleEditHook = (hookId: string) => {
+    router.push(`/custom-hooks/new?editId=${encodeURIComponent(hookId)}&returnTo=%2F%3Fview%3Dbuilder`);
   };
 
   return (
@@ -142,12 +153,17 @@ export default function NodesPanel({ onDragStart }: NodesPanelProps) {
         <button
           type="button"
           className="create-hook-btn"
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => router.push('/custom-hooks/new?returnTo=%2F%3Fview%3Dbuilder')}
         >
           + Create Hook
         </button>
         {filteredCustomHooks.map((hook) => (
-          <CustomHookTile key={hook.id} hook={hook} onDragStart={onDragStart} />
+          <CustomHookTile
+            key={hook.id}
+            hook={hook}
+            onDragStart={onDragStart}
+            onEdit={handleEditHook}
+          />
         ))}
       </div>
 
@@ -162,13 +178,6 @@ export default function NodesPanel({ onDragStart }: NodesPanelProps) {
 
       {groupedActions.length === 0 && filteredCustomHooks.length === 0 && (
         <p className="empty-library">No action found for this search.</p>
-      )}
-
-      {isModalOpen && (
-        <CustomHookModal
-          onClose={() => setIsModalOpen(false)}
-          onCreate={handleCreateHook}
-        />
       )}
     </aside>
   );

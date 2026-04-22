@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -30,16 +30,7 @@ import {
 } from './hookSchema';
 import { useExecutionEngine } from './useExecutionEngine';
 import WorkflowChatPanel from './chat/WorkflowChatPanel';
-
-interface CustomHook {
-  id: string;
-  hookName: string;
-  category: string;
-  functionName: string;
-  moduleName: string;
-  condition?: string;
-  code: string;
-}
+import type { CustomHook } from './customHooksStore';
 
 const initialNodes: Node[] = [
   {
@@ -60,14 +51,17 @@ const getEdgeId = () => `edge-${++edgeId}`;
 
 function WorkflowCanvas() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const toolbarMenuRef = useRef<HTMLDivElement>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [draggedHookData, setDraggedHookData] = useState<CustomHook | null>(null);
   const [clientCode, setClientCode] = useState('COGITATE');
   const [serializedSchema, setSerializedSchema] = useState('');
   const [message, setMessage] = useState<string | null>(null);
-  const [activePanel, setActivePanel] = useState<"schema" | "logs" | null>(null);
+  const [isSchemaPanelOpen, setIsSchemaPanelOpen] = useState(false);
+  const [isLogsDockVisible, setIsLogsDockVisible] = useState(true);
+  const [isLogsDockExpanded, setIsLogsDockExpanded] = useState(false);
+  const [isToolbarMenuOpen, setIsToolbarMenuOpen] = useState(false);
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
   const { screenToFlowPosition, fitView } = useReactFlow();
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
@@ -78,6 +72,31 @@ function WorkflowCanvas() {
   const engine = useExecutionEngine(nodesRef, edgesRef);
 
   const isExecuting = engine.state === 'running' || engine.state === 'paused';
+
+  useEffect(() => {
+    if (!isToolbarMenuOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!toolbarMenuRef.current) return;
+      if (!toolbarMenuRef.current.contains(event.target as globalThis.Node)) {
+        setIsToolbarMenuOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsToolbarMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('keydown', handleEscape);
+
+    return () => {
+      window.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [isToolbarMenuOpen]);
 
   // Inject execution status into node data for visual highlighting
   const displayNodes = useMemo(() => {
@@ -185,7 +204,16 @@ function WorkflowCanvas() {
 
       if (type.startsWith('customHook-')) {
         // Handle custom hook
-        const hookData = draggedHookData;
+        const payload = event.dataTransfer.getData('application/custom-hook');
+        if (!payload) return;
+
+        let hookData: CustomHook;
+        try {
+          hookData = JSON.parse(payload) as CustomHook;
+        } catch {
+          return;
+        }
+
         if (!hookData) return;
 
         node = {
@@ -240,8 +268,11 @@ function WorkflowCanvas() {
 
   const onDragStart = (event: React.DragEvent, nodeType: string, hookData?: CustomHook) => {
     event.dataTransfer.setData('application/reactflow', nodeType);
+    event.dataTransfer.setData('text/plain', nodeType);
+    if (hookData) {
+      event.dataTransfer.setData('application/custom-hook', JSON.stringify(hookData));
+    }
     event.dataTransfer.effectAllowed = 'move';
-    setDraggedHookData(hookData || null);
   };
 
   const deleteSelection = useCallback(() => {
@@ -357,7 +388,8 @@ function WorkflowCanvas() {
   // ─── Execution handlers ─────────────────────────────────────────
   const handleRun = useCallback(() => {
     engine.reset();
-    setActivePanel('logs');
+    setIsLogsDockVisible(true);
+    setIsLogsDockExpanded(true);
     // Small delay to ensure reset completes before run
     setTimeout(() => engine.run(), 50);
   }, [engine]);
@@ -378,12 +410,17 @@ function WorkflowCanvas() {
     engine.reset();
   }, [engine]);
 
-  // ─── Helpers ────────────────────────────────────────────────────
-  const isActionNode =
-    selectedNode &&
-    selectedNode.type !== 'start' &&
-    selectedNode.type !== 'end';
+  const handleImportSchemaClick = useCallback(() => {
+    if (!serializedSchema.trim()) {
+      setIsSchemaPanelOpen(true);
+      setMessage('Paste JSON in Schema Output and click Import Schema.');
+      return;
+    }
 
+    importSchema();
+  }, [importSchema, serializedSchema]);
+
+  // ─── Helpers ────────────────────────────────────────────────────
   const selectedData = (selectedNode?.data ?? {}) as BuilderNodeData;
   const selectedCondition =
     typeof selectedData.condition === 'string'
@@ -391,9 +428,8 @@ function WorkflowCanvas() {
       : typeof selectedData.condition?.expression === 'string'
       ? selectedData.condition.expression
       : '';
-  const selectedDef = nodeDefinitionByType[selectedNode?.type ?? ''];
 
-  const canvasStyle = activePanel === "schema" ? { flex: '0 0 80%', borderRight: '1px solid #e5e7eb' } : { flex: 1 };
+  const canvasStyle = isSchemaPanelOpen ? { flex: '0 0 80%', borderRight: '1px solid #e5e7eb' } : { flex: 1 };
 
   return (
     <div className="builder-layout">
@@ -401,89 +437,132 @@ function WorkflowCanvas() {
 
       <div className="builder-main">
         <div className="builder-toolbar">
-          <label>
-            Client Code
-            <input
-              value={clientCode}
-              onChange={(event) => setClientCode(event.target.value)}
-              className="toolbar-input"
-              placeholder="e.g., COGITATE"
-            />
-          </label>
-          <button type="button" onClick={() => fitView({ padding: 0.2 })}>
-            Fit View
-          </button>
-          <button type="button" onClick={deleteSelection}>
-            Delete
-          </button>
-          <button type="button" onClick={clearCanvas}>
-            Clear Canvas
-          </button>
-          <button type="button" onClick={exportSchema}>
-            Export Schema
-          </button>
-          <button type="button" onClick={importSchema}>
-            Import Schema
-          </button>
-          <button type="button" onClick={downloadSchema}>
-            ⬇ Download JSON
-          </button>
+          <div className="builder-toolbar-left">
+            <label>
+              Client Code
+              <input
+                value={clientCode}
+                onChange={(event) => setClientCode(event.target.value)}
+                className="toolbar-input"
+                placeholder="e.g., COGITATE"
+              />
+            </label>
+            <button type="button" onClick={() => fitView({ padding: 0.2 })}>
+              Fit View
+            </button>
+            <button
+              type="button"
+              onClick={deleteSelection}
+              disabled={!selectedNodeId && !selectedEdgeId}
+            >
+              Delete
+            </button>
 
-          {/* ─── Execution Controls ─────────────────────────── */}
-          <div style={{ borderLeft: '1px solid #c9d7ea', paddingLeft: '8px', marginLeft: '4px', display: 'flex', gap: '4px' }}>
-            {engine.state !== 'running' && engine.state !== 'paused' && (
-              <button type="button" className="exec-btn exec-btn-run" onClick={handleRun}>
-                ▶ Run
+            <div className="exec-controls-inline">
+              {engine.state !== 'running' && engine.state !== 'paused' && (
+                <button type="button" className="exec-btn exec-btn-run" onClick={handleRun}>
+                  Execute Workflow
+                </button>
+              )}
+              {engine.state === 'running' && (
+                <button type="button" className="exec-btn exec-btn-pause" onClick={handlePause}>
+                  Pause
+                </button>
+              )}
+              {engine.state === 'paused' && (
+                <button type="button" className="exec-btn exec-btn-run" onClick={handleResume}>
+                  Resume
+                </button>
+              )}
+              {isExecuting && (
+                <button type="button" className="exec-btn exec-btn-stop" onClick={handleStop}>
+                  Stop
+                </button>
+              )}
+              {(engine.state === 'completed' || engine.state === 'error') && (
+                <button type="button" className="exec-btn exec-btn-reset" onClick={handleReset}>
+                  Reset
+                </button>
+              )}
+            </div>
+
+            <div className="toolbar-menu-wrap" ref={toolbarMenuRef}>
+              <button
+                type="button"
+                className="toolbar-menu-trigger"
+                onClick={() => setIsToolbarMenuOpen((prev) => !prev)}
+                aria-label="Open canvas actions"
+                aria-haspopup="menu"
+                aria-expanded={isToolbarMenuOpen}
+              >
+                ...
               </button>
-            )}
-            {engine.state === 'running' && (
-              <button type="button" className="exec-btn exec-btn-pause" onClick={handlePause}>
-                ⏸ Pause
-              </button>
-            )}
-            {engine.state === 'paused' && (
-              <button type="button" className="exec-btn exec-btn-run" onClick={handleResume}>
-                ▶ Resume
-              </button>
-            )}
-            {isExecuting && (
-              <button type="button" className="exec-btn exec-btn-stop" onClick={handleStop}>
-                ⏹ Stop
-              </button>
-            )}
-            {(engine.state === 'completed' || engine.state === 'error') && (
-              <button type="button" className="exec-btn exec-btn-reset" onClick={handleReset}>
-                ↺ Reset
-              </button>
-            )}
+
+              {isToolbarMenuOpen && (
+                <div className="toolbar-menu-dropdown" role="menu">
+                  <button type="button" role="menuitem" onClick={() => { clearCanvas(); setIsToolbarMenuOpen(false); }}>
+                    Clear Canvas
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => { exportSchema(); setIsToolbarMenuOpen(false); }}>
+                    Export Schema
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => { handleImportSchemaClick(); setIsToolbarMenuOpen(false); }}>
+                    Import Schema
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => { downloadSchema(); setIsToolbarMenuOpen(false); }}>
+                    ⬇ Download JSON
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitemcheckbox"
+                    aria-checked={isSchemaPanelOpen}
+                    onClick={() => {
+                      setIsSchemaPanelOpen((prev) => !prev);
+                      setIsToolbarMenuOpen(false);
+                    }}
+                  >
+                    {isSchemaPanelOpen ? '✓ ' : ''}Schema Output
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitemcheckbox"
+                    aria-checked={isLogsDockVisible}
+                    onClick={() => {
+                      setIsLogsDockVisible((prev) => {
+                        const next = !prev;
+                        if (next) {
+                          setIsLogsDockExpanded(true);
+                        }
+                        return next;
+                      });
+                      setIsToolbarMenuOpen(false);
+                    }}
+                  >
+                    {isLogsDockVisible ? '✓ ' : ''}Execution Logs
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitemcheckbox"
+                    aria-checked={!isChatCollapsed}
+                    onClick={() => {
+                      setIsChatCollapsed((prev) => !prev);
+                      setIsToolbarMenuOpen(false);
+                    }}
+                  >
+                    {!isChatCollapsed ? '✓ ' : ''}AI Chat Panel
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
-          <button
-            type="button"
-            className={`px-3 py-1.5 text-sm border rounded-md ${activePanel === "schema" ? "bg-blue-500 text-white" : "hover:bg-gray-100"}`}
-            onClick={() => setActivePanel(activePanel === "schema" ? null : "schema")}
-          >
-            Schema Output
-          </button>
-
-          <button
-            type="button"
-            className={`px-3 py-1.5 text-sm border rounded-md ${activePanel === "logs" ? "bg-blue-500 text-white" : "hover:bg-gray-100"}`}
-            onClick={() => setActivePanel(activePanel === "logs" ? null : "logs")}
-          >
-            Execution Logs
-          </button>
-
-          <button
-            type="button"
-            className="px-3 py-1.5 text-sm border rounded-md hover:bg-gray-100"
-            onClick={() => setIsChatCollapsed((prev) => !prev)}
-          >
-            {isChatCollapsed ? 'Show AI Chat' : 'Hide AI Chat'}
-          </button>
-
-          {message && <span className="toolbar-message">{message}</span>}
+          <div
+            className={`builder-toolbar-right builder-toolbar-right-rail ${isChatCollapsed ? 'collapsed' : ''}`}
+            aria-hidden={isChatCollapsed}
+          />
         </div>
+
+        {message && <div className="toolbar-message-row"><span className="toolbar-message">{message}</span></div>}
 
         {selectedNode?.type === 'ifCondition' && (
           <div className="condition-panel">
@@ -575,7 +654,7 @@ function WorkflowCanvas() {
                 </ReactFlow>
               </div>
 
-              {activePanel === "schema" && (
+              {isSchemaPanelOpen && (
                 <div className="schema-panel" style={{ flex: '0 0 20%' }}>
                   <label htmlFor="hook-schema">Schema Output</label>
                   <textarea
@@ -587,15 +666,6 @@ function WorkflowCanvas() {
                 </div>
               )}
             </div>
-
-            {activePanel === 'logs' && (
-              <ExecutionLogs
-                logs={engine.logs}
-                executionState={engine.state}
-                progress={engine.progress}
-                onClear={handleReset}
-              />
-            )}
           </div>
 
           <aside className={`chat-sidebar ${isChatCollapsed ? 'collapsed' : ''}`}>
@@ -607,6 +677,31 @@ function WorkflowCanvas() {
             )}
           </aside>
         </div>
+
+        {isLogsDockVisible && (
+          <section className={`logs-dock ${isLogsDockExpanded ? 'expanded' : 'collapsed'}`}>
+            <button
+              type="button"
+              className="logs-dock-header"
+              onClick={() => setIsLogsDockExpanded((prev) => !prev)}
+              aria-expanded={isLogsDockExpanded}
+            >
+              <span>Logs</span>
+              <span className="logs-dock-arrow">{isLogsDockExpanded ? '▾' : '▴'}</span>
+            </button>
+
+            {isLogsDockExpanded && (
+              <ExecutionLogs
+                logs={engine.logs}
+                executionState={engine.state}
+                progress={engine.progress}
+                onClear={handleReset}
+                showHeader={false}
+                emptyMessage="Nothing to display yet. Execute the workflow to see execution logs."
+              />
+            )}
+          </section>
+        )}
       </div>
     </div>
   );
