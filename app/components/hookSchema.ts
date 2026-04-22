@@ -28,14 +28,6 @@ export interface HookConfig {
   };
 }
 
-export interface HookMetadata extends HookAction {
-  RequestName: string;
-  NeedCascading: boolean;
-  HookCallCascading?: boolean;
-  StaticParams?: Record<string, unknown>;
-  phase: 'Pre' | 'Post';
-}
-
 // ─── Builder Node Data ──────────────────────────────────────────
 
 export interface BuilderNodeData {
@@ -562,36 +554,4 @@ export function hookSchemaToCanvas(config: HookConfig): {
   }
 
   return { nodes, edges };
-}
-/**
- * Groups hooks by RequestName for the dashboard comparison view.
- */
-export function groupHooksByRequestName(config: HookConfig): Record<string, HookMetadata[]> {
-  const groups: Record<string, HookMetadata[]> = {};
-
-  const collectHooks = (hooks: HookEntry[], phase: HookMetadata['phase']) => {
-    hooks.forEach((hook) => {
-      const key = hook.RequestName || 'Unknown Request';
-
-      if (!groups[key]) {
-        groups[key] = [];
-      }
-
-      hook.Actions.forEach((action) => {
-        groups[key].push({
-          ...action,
-          RequestName: hook.RequestName,
-          NeedCascading: hook.NeedCascading,
-          HookCallCascading: hook.HookCallCascading,
-          StaticParams: hook.StaticParams,
-          phase,
-        });
-      });
-    });
-  };
-
-  collectHooks(config.Hooks?.Pre || [], 'Pre');
-  collectHooks(config.Hooks?.Post || [], 'Post');
-
-  return groups;
 }

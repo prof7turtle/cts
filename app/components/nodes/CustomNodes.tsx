@@ -6,8 +6,6 @@ import { nodeDefinitionByType } from './nodeTypes';
 import type { BuilderNodeData } from '../hookSchema';
 import type { NodeExecStatus } from '../useExecutionEngine';
 import CustomHookNode from './CustomHookNode';
-import NodeStatusBadge from './NodeStatusBadge';
-import { getPastelForCategory } from './pastelPalette';
 
 function getExecClassName(status: NodeExecStatus | undefined): string {
   switch (status) {
@@ -22,10 +20,33 @@ function getExecClassName(status: NodeExecStatus | undefined): string {
   }
 }
 
+function StatusIndicator({ status }: { status?: NodeExecStatus }) {
+  if (!status || status === 'idle') return null;
+
+  const config: Record<string, { bg: string; icon: string }> = {
+    running: { bg: '#3b82f6', icon: '⏳' },
+    completed: { bg: '#22c55e', icon: '✓' },
+    error: { bg: '#ef4444', icon: '✕' },
+    skipped: { bg: '#f59e0b', icon: '⏭' },
+  };
+
+  const c = config[status];
+  if (!c) return null;
+
+  return (
+    <div
+      className="node-status-indicator"
+      style={{ background: c.bg }}
+    >
+      {c.icon}
+    </div>
+  );
+}
+
 function BaseNode({ data, selected, type }: NodeProps) {
   const typedData = (data ?? {}) as BuilderNodeData & { executionStatus?: NodeExecStatus };
   const definition = nodeDefinitionByType[type ?? ''];
-  const pastel = getPastelForCategory(definition?.category);
+  const color = typedData.color ?? definition?.color ?? '#334155';
   const label = typedData.label ?? definition?.label ?? type ?? 'Action';
   const isDecision = type === 'ifCondition';
   const condition =
@@ -38,50 +59,22 @@ function BaseNode({ data, selected, type }: NodeProps) {
   const execClass = getExecClassName(typedData.executionStatus);
 
   return (
-    <div
-      className={`workflow-node ${selected ? 'selected' : ''} ${execClass}`}
-      style={{ position: 'relative' }}
-    >
-      <NodeStatusBadge status={typedData.executionStatus} />
-      <Handle
-        type="target"
-        position={Position.Top}
-        className="!h-2.5 !w-2.5 !border-2 !border-white !shadow-sm"
-        style={{ background: pastel.handle }}
-      />
+    <div className={`workflow-node ${selected ? 'selected' : ''} ${execClass}`} style={{ position: 'relative' }}>
+      <StatusIndicator status={typedData.executionStatus} />
+      <Handle type="target" position={Position.Top} style={{ background: color }} />
 
-      <div
-        className="node-header flex min-h-[3rem] items-center gap-3 rounded-t-[13px] border-b px-4 py-3 text-[13px] font-semibold leading-snug"
-        style={{
-          background: pastel.bg,
-          color: pastel.fg,
-          borderColor: pastel.border,
-        }}
-      >
-        <span
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-solid text-[11px] font-extrabold uppercase leading-none shadow-sm"
-          style={{
-            backgroundColor: pastel.bg,
-            color: pastel.fg,
-            borderColor: pastel.border,
-          }}
-        >
-          {definition?.icon ?? 'AC'}
-        </span>
-        <span className="min-w-0 truncate tracking-tight" style={{ color: pastel.fg }}>
-          {label}
-        </span>
+      <div className="node-header" style={{ background: color }}>
+        <span className="node-icon-badge">{definition?.icon ?? 'AC'}</span>
+        <span>{label}</span>
       </div>
 
       {isDecision && (
         <div className="node-body">
-          <div className="decision-shape" style={{ borderColor: pastel.fg, color: pastel.fg }} />
-          <div className="node-label" style={{ color: pastel.fg }}>
-            Condition
+          <div className="decision-shape" style={{ borderColor: color }}>
+            IF
           </div>
-          <div className="node-condition" style={{ color: '#475569' }}>
-            {condition}
-          </div>
+          <div className="node-label">Condition</div>
+          <div className="node-condition">{condition}</div>
           <div className="decision-paths">
             <span>YES</span>
             <span>NO</span>
@@ -90,12 +83,7 @@ function BaseNode({ data, selected, type }: NodeProps) {
       )}
 
       {!isDecision && (
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          className="!h-2.5 !w-2.5 !border-2 !border-white !shadow-sm"
-          style={{ background: pastel.handle }}
-        />
+        <Handle type="source" position={Position.Bottom} style={{ background: color }} />
       )}
 
       {isDecision && (
@@ -104,15 +92,13 @@ function BaseNode({ data, selected, type }: NodeProps) {
             id="yes"
             type="source"
             position={Position.Bottom}
-            className="!h-2.5 !w-2.5 !border-2 !border-white !shadow-sm"
-            style={{ background: '#bbf7d0', left: '30%' }}
+            style={{ background: '#16a34a', left: '30%' }}
           />
           <Handle
             id="no"
             type="source"
             position={Position.Bottom}
-            className="!h-2.5 !w-2.5 !border-2 !border-white !shadow-sm"
-            style={{ background: '#fecaca', left: '70%' }}
+            style={{ background: '#dc2626', left: '70%' }}
           />
         </>
       )}
@@ -124,6 +110,9 @@ const MemoNode = memo(BaseNode);
 MemoNode.displayName = 'MemoNode';
 
 export const customNodeTypes = {
-  ...Object.fromEntries(Object.keys(nodeDefinitionByType).map((type) => [type, MemoNode])),
+  ...Object.fromEntries(
+    Object.keys(nodeDefinitionByType).map((type) => [type, MemoNode])
+  ),
   customHook: CustomHookNode,
 };
+

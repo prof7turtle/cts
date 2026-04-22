@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { ActionCategory } from './nodes/nodeTypes';
-import Editor from '@monaco-editor/react';
+
 interface CustomHook {
   hookName: string;
   category: ActionCategory;
@@ -135,23 +135,15 @@ export default function CustomHookModal({ onClose, onCreate }: CustomHookModalPr
             />
           </div>
 
-          <div className="form-group form-group-code">
+          <div className="form-group">
             <label htmlFor="code">Code</label>
-            <div className="code-editor-shell">
-              <div className="code-editor-topbar">
-                <span className="code-editor-dot code-editor-dot-red" />
-                <span className="code-editor-dot code-editor-dot-amber" />
-                <span className="code-editor-dot code-editor-dot-green" />
-                <span className="code-editor-filename">hook.ts</span>
-              </div>
-              <Editor
-                height="300px"
-                defaultLanguage="javascript"
-                value={formData.code}
-                onChange={(value) => handleChange('code', value ?? '')}
-                theme="vs-dark"
-              />
-            </div>
+            <textarea
+              id="code"
+              value={formData.code}
+              onChange={(e) => handleChange('code', e.target.value)}
+              placeholder="Enter hook code"
+              rows={15}
+            />
           </div>
 
           <div className="modal-actions">
