@@ -45,6 +45,7 @@ export interface BuilderNodeData {
   needCascading?: boolean;
   hookCallCascading?: boolean;
   staticParams?: Record<string, unknown>;
+  workflowGroupId?: string;
 }
 
 type BranchPath = '' | 'yes' | 'no';
@@ -59,8 +60,8 @@ interface ActiveConditionState {
   hasExplicitBranchAction: boolean;
 }
 
-const DEFAULT_PRE_REQUEST = '/Quote/Summary';
-const DEFAULT_POST_REQUEST = '/Application/Summary';
+const DEFAULT_PRE_REQUEST = '/New/Request';
+const DEFAULT_POST_REQUEST = '/New/Request';
 
 function normalizeBranchPath(path?: string): BranchPath {
   const normalized = (path ?? '').trim().toLowerCase();
@@ -191,14 +192,44 @@ function buildAction(
   };
 }
 
-function getRequestName(node: Node): string {
-  const definition = nodeDefinitionByType[node.type ?? ''];
-  const data = (node.data ?? {}) as BuilderNodeData;
+function getRequestName(
+  node: Node,
+  nodeById: Map<string, Node>,
+  incomingByTarget: Map<string, Edge[]>,
+  visited = new Set<string>()
+): string {
+  const nodeId = node.id;
+  if (visited.has(nodeId)) return ''; // Prevent infinite loops
+  visited.add(nodeId);
 
+  // 1. If this is a start node, it's the source of truth for the request name
+  if (node.type === 'start') {
+    return (node.data as BuilderNodeData)?.requestName ?? DEFAULT_PRE_REQUEST;
+  }
+
+  // 2. Trace up the graph to find a start node
+  const incoming = incomingByTarget.get(nodeId) ?? [];
+  for (const edge of incoming) {
+    const name = getRequestName(nodeById.get(edge.source)!, nodeById, incomingByTarget, visited);
+    if (name) return name;
+  }
+
+  // 3. If no start node found via connections, try parent group as fallback
+  if (node.parentId) {
+    const groupStartNode = Array.from(nodeById.values()).find(
+      (n) => n.parentId === node.parentId && n.type === 'start'
+    );
+    const startData = groupStartNode?.data as BuilderNodeData | undefined;
+    if (startData?.requestName) {
+      return startData.requestName;
+    }
+  }
+
+  // 4. Final fallback to node's own data or global default (hardcoded defaults in definitions are ignored)
+  const data = (node.data ?? {}) as BuilderNodeData;
   return (
     data.requestName ??
-    definition?.defaultData?.requestName ??
-    (definition?.category === 'Post Hook'
+    (nodeDefinitionByType[node.type ?? '']?.category === 'Post Hook'
       ? DEFAULT_POST_REQUEST
       : DEFAULT_PRE_REQUEST)
   );
@@ -220,35 +251,84 @@ function getStaticParams(node: Node): Record<string, unknown> {
 }
 
 /**
- * Groups action nodes by their RequestName and builds HookEntry objects.
- * Nodes sharing the same RequestName are grouped into a single entry.
+ * Metadata extracted from start nodes, keyed by RequestName.
+ * These hold the workflow-level properties set via the sidebar config.
+ */
+interface StartNodeMeta {
+  needCascading: boolean;
+  hookCallCascading?: boolean;
+  staticParams: Record<string, unknown>;
+}
+
+/**
+ * Groups action nodes by their associated Start node and RequestName.
+ * This ensures that multiple visual workflows are preserved in the schema,
+ * even if they share the same RequestName (preventing destructive merging).
  */
 function groupNodesByRequestName(
   nodes: Node[],
-  resolveCondition: (nodeId: string) => string = () => ''
+  nodeById: Map<string, Node>,
+  incomingByTarget: Map<string, Edge[]>,
+  resolveCondition: (nodeId: string) => string = () => '',
+  startNodeMetas: Map<string, StartNodeMeta> = new Map()
 ): HookEntry[] {
   const entryMap = new Map<string, { nodes: Node[]; entry: Partial<HookEntry> }>();
 
-  for (const node of nodes) {
-    const requestName = getRequestName(node);
+  // Helper to find the "anchor" start node ID for any node
+  const getStartNodeId = (nodeId: string, visited = new Set<string>()): string | null => {
+    if (visited.has(nodeId)) return null;
+    visited.add(nodeId);
+    const node = nodeById.get(nodeId);
+    if (!node) return null;
+    if (node.type === 'start') return node.id;
+    
+    const incoming = incomingByTarget.get(nodeId) ?? [];
+    for (const edge of incoming) {
+      const sid = getStartNodeId(edge.source, visited);
+      if (sid) return sid;
+    }
+    
+    if (node.parentId) {
+      const groupStart = Array.from(nodeById.values()).find(n => n.parentId === node.parentId && n.type === 'start');
+      if (groupStart) return groupStart.id;
+    }
+    return null;
+  };
 
-    if (!entryMap.has(requestName)) {
-      entryMap.set(requestName, {
+  for (const node of nodes) {
+    const startNodeId = getStartNodeId(node.id) || 'orphaned';
+    const requestName = getRequestName(node, nodeById, incomingByTarget);
+    // We use startNodeId as the key to keep separate workflow columns distinct
+    const key = startNodeId;
+
+    if (!entryMap.has(key)) {
+      let meta: StartNodeMeta | undefined;
+      const startNode = nodeById.get(startNodeId);
+      if (startNode) {
+        const sData = startNode.data as BuilderNodeData;
+        meta = {
+          needCascading: sData.needCascading !== false,
+          hookCallCascading: sData.hookCallCascading,
+          staticParams: sData.staticParams ?? {}
+        };
+      }
+
+      entryMap.set(key, {
         nodes: [],
         entry: {
           RequestName: requestName,
-          NeedCascading: getNeedCascading(node),
-          StaticParams: getStaticParams(node),
+          NeedCascading: meta?.needCascading ?? getNeedCascading(node),
+          StaticParams: meta?.staticParams ?? getStaticParams(node),
         },
       });
 
-      const cascading = getHookCallCascading(node);
+      const cascading = meta?.hookCallCascading ?? getHookCallCascading(node);
       if (cascading !== undefined) {
-        entryMap.get(requestName)!.entry.HookCallCascading = cascading;
+        entryMap.get(key)!.entry.HookCallCascading = cascading;
       }
     }
 
-    entryMap.get(requestName)!.nodes.push(node);
+    entryMap.get(key)!.nodes.push(node);
   }
 
   return Array.from(entryMap.values()).map(({ nodes: groupedNodes, entry }) => ({
@@ -268,7 +348,7 @@ export function canvasToHookSchema(
   clientCode: string
 ): HookConfig {
   const actionNodes = sortNodesByPosition(
-    nodes.filter((node) => node.type !== 'start' && node.type !== 'end' && node.type !== 'requestNameLabel')
+    nodes.filter((node) => node.type !== 'start' && node.type !== 'end' && node.type !== 'requestNameLabel' && node.type !== 'group')
   );
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
   const incomingByTarget = new Map<string, Edge[]>();
@@ -277,6 +357,24 @@ export function canvasToHookSchema(
     const incoming = incomingByTarget.get(edge.target) ?? [];
     incoming.push(edge);
     incomingByTarget.set(edge.target, incoming);
+  }
+
+  // ── Collect workflow-level metadata from start nodes ────────
+  // The sidebar config stores requestName, needCascading, hookCallCascading,
+  // and staticParams on the start node. We extract them here so that
+  // groupNodesByRequestName uses the correct values.
+  const startNodeMetas = new Map<string, StartNodeMeta>();
+  for (const node of nodes) {
+    if (node.type !== 'start') continue;
+    const data = (node.data ?? {}) as BuilderNodeData;
+    const reqName = data.requestName ?? DEFAULT_PRE_REQUEST;
+    if (!startNodeMetas.has(reqName)) {
+      startNodeMetas.set(reqName, {
+        needCascading: data.needCascading !== false,
+        hookCallCascading: data.hookCallCascading,
+        staticParams: data.staticParams ?? {},
+      });
+    }
   }
 
   const conditionCache = new Map<string, string>();
@@ -340,8 +438,8 @@ export function canvasToHookSchema(
   return {
     Client: clientCode || 'YOUR_CLIENT_CODE',
     Hooks: {
-      Pre: groupNodesByRequestName(preNodes, inferNodeCondition),
-      Post: groupNodesByRequestName(postNodes, inferNodeCondition),
+      Pre: groupNodesByRequestName(preNodes, nodeById, incomingByTarget, inferNodeCondition, startNodeMetas),
+      Post: groupNodesByRequestName(postNodes, nodeById, incomingByTarget, inferNodeCondition, startNodeMetas),
     },
   };
 }
@@ -363,6 +461,9 @@ function mapFunctionToNodeType(functionName: string): string {
  */
 interface RequestNameGroup {
   requestName: string;
+  needCascading: boolean;
+  hookCallCascading?: boolean;
+  staticParams: Record<string, unknown>;
   preActions: HookAction[];
   postActions: HookAction[];
 }
@@ -370,6 +471,8 @@ interface RequestNameGroup {
 /**
  * Groups all Pre and Post hook entries by their RequestName.
  * Returns an ordered list of groups (preserving first-seen order).
+ * Carries through NeedCascading, HookCallCascading, and StaticParams
+ * from the first entry encountered per RequestName.
  */
 function groupHooksByRequestName(config: HookConfig): RequestNameGroup[] {
   const groupMap = new Map<string, RequestNameGroup>();
@@ -378,7 +481,14 @@ function groupHooksByRequestName(config: HookConfig): RequestNameGroup[] {
   for (const entry of config.Hooks.Pre ?? []) {
     const name = entry.RequestName;
     if (!groupMap.has(name)) {
-      groupMap.set(name, { requestName: name, preActions: [], postActions: [] });
+      groupMap.set(name, {
+        requestName: name,
+        needCascading: entry.NeedCascading ?? true,
+        hookCallCascading: entry.HookCallCascading,
+        staticParams: entry.StaticParams ?? {},
+        preActions: [],
+        postActions: [],
+      });
       order.push(name);
     }
     groupMap.get(name)!.preActions.push(...(entry.Actions ?? []));
@@ -387,7 +497,14 @@ function groupHooksByRequestName(config: HookConfig): RequestNameGroup[] {
   for (const entry of config.Hooks.Post ?? []) {
     const name = entry.RequestName;
     if (!groupMap.has(name)) {
-      groupMap.set(name, { requestName: name, preActions: [], postActions: [] });
+      groupMap.set(name, {
+        requestName: name,
+        needCascading: entry.NeedCascading ?? true,
+        hookCallCascading: entry.HookCallCascading,
+        staticParams: entry.StaticParams ?? {},
+        preActions: [],
+        postActions: [],
+      });
       order.push(name);
     }
     groupMap.get(name)!.postActions.push(...(entry.Actions ?? []));
@@ -398,7 +515,8 @@ function groupHooksByRequestName(config: HookConfig): RequestNameGroup[] {
 
 /**
  * Builds a single vertical workflow column for a RequestName group.
- * Returns the nodes, edges, and the max Y reached (for alignment).
+ * All nodes are children of an invisible group node so the entire workflow
+ * moves together when the group (or start node via drag handler) is dragged.
  */
 function buildWorkflowColumn(
   group: RequestNameGroup,
@@ -410,27 +528,57 @@ function buildWorkflowColumn(
 ): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
-  const centerX = columnX + columnWidth / 2 - 95; // center nodes within column
+  const centerX = columnWidth / 2 - 95; // relative to group origin
 
-  // ─── Request Name Label (annotation node) ───────────────
-  const labelNodeId = `label-${columnIndex}`;
+  // ─── Invisible Group Node (parent for the whole column) ──
+  const groupId = `group-${columnIndex}`;
   nodes.push({
-    id: labelNodeId,
-    type: 'requestNameLabel',
-    position: { x: columnX, y: 10 },
-    data: { label: `Request Name:\n${group.requestName}`, requestName: group.requestName },
+    id: groupId,
+    type: 'group',
+    position: { x: columnX, y: 0 },
+    data: {},
+    style: {
+      width: columnWidth,
+      height: 9999, // large enough; won't be visible
+      background: 'transparent',
+      border: 'none',
+      pointerEvents: 'none' as const,
+    },
     draggable: false,
     selectable: false,
     connectable: false,
   } as Node);
 
-  // ─── Start Node ─────────────────────────────────────────
+  // ─── Request Name Label (child of group, centered) ───────
+  const labelNodeId = `label-${columnIndex}`;
+  nodes.push({
+    id: labelNodeId,
+    type: 'requestNameLabel',
+    position: { x: columnWidth / 2 - 130, y: 10 },
+    data: { label: `Request Name:\n${group.requestName}`, requestName: group.requestName, workflowGroupId: groupId },
+    parentId: groupId,
+    extent: 'parent' as const,
+    draggable: true,
+    selectable: false,
+    connectable: false,
+  } as Node);
+
+  // ─── Start Node (child of group) ─────────────────────────
   const startId = `start-${columnIndex}`;
   nodes.push({
     id: startId,
     type: 'start',
     position: { x: centerX, y: 80 },
-    data: { label: 'Start' },
+    data: {
+      label: 'Start',
+      workflowGroupId: groupId,
+      requestName: group.requestName,
+      needCascading: group.needCascading,
+      hookCallCascading: group.hookCallCascading,
+      staticParams: group.staticParams,
+    },
+    parentId: groupId,
+    extent: 'parent' as const,
   });
 
   let mainY = 210;
@@ -462,6 +610,8 @@ function buildWorkflowColumn(
       id: `n-${nodeIndexRef.value++}`,
       type,
       position: { x, y },
+      parentId: groupId,
+      extent: 'parent' as const,
       data: {
         label: definition?.label ?? action.FunctionName,
         moduleName: action.ModuleName,
@@ -501,6 +651,8 @@ function buildWorkflowColumn(
         id: `n-${nodeIndexRef.value++}`,
         type: 'ifCondition',
         position: { x: centerX, y: mainY },
+        parentId: groupId,
+        extent: 'parent' as const,
         data: {
           label: 'If / Else',
           condition: action.Condition,
@@ -594,7 +746,7 @@ function buildWorkflowColumn(
     mainY = nextMainY + 130;
   }
 
-  // ─── End Node ───────────────────────────────────────────
+  // ─── End Node (child of group) ──────────────────────────
   const endY = activeCondition
     ? Math.max(mainY, activeCondition.yesNextY, activeCondition.noNextY)
     : mainY;
@@ -603,6 +755,8 @@ function buildWorkflowColumn(
     id: endId,
     type: 'end',
     position: { x: centerX, y: endY },
+    parentId: groupId,
+    extent: 'parent' as const,
     data: { label: 'End' },
   } satisfies Node;
   nodes.push(endNode);
@@ -611,6 +765,12 @@ function buildWorkflowColumn(
     joinActiveCondition(endNode.id);
   } else {
     connectNodes(mainCursorNodeId, endNode.id);
+  }
+
+  // Update group height to fit all content
+  const groupNode = nodes.find((n) => n.id === groupId);
+  if (groupNode) {
+    groupNode.style = { ...groupNode.style, height: endY + 200 };
   }
 
   return { nodes, edges };
@@ -622,33 +782,15 @@ export function hookSchemaToCanvas(config: HookConfig): {
 } {
   const groups = groupHooksByRequestName(config);
 
-  // If only one request name or no groups, fall back to single-column layout
-  // but still use the new column-based approach for consistency
   if (groups.length === 0) {
-    return {
-      nodes: [
-        {
-          id: 'start',
-          type: 'start',
-          position: { x: 320, y: 80 },
-          data: { label: 'Start' },
-        },
-        {
-          id: 'end',
-          type: 'end',
-          position: { x: 320, y: 210 },
-          data: { label: 'End' },
-        },
-      ],
-      edges: [
-        {
-          id: 'e-1',
-          source: 'start',
-          target: 'end',
-          type: 'smoothstep',
-        },
-      ],
+    const defaultGroup: RequestNameGroup = {
+      requestName: '/Quote/Summary',
+      needCascading: true,
+      staticParams: {},
+      preActions: [],
+      postActions: [],
     };
+    return buildWorkflowColumn(defaultGroup, 0, 0, 420, { value: 1 }, { value: 1 });
   }
 
   const COLUMN_WIDTH = 420;

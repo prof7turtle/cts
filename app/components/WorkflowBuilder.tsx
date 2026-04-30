@@ -7,6 +7,7 @@ import {
   addEdge,
   useNodesState,
   useEdgesState,
+  applyNodeChanges,
   Background,
   BackgroundVariant,
   Controls,
@@ -16,6 +17,7 @@ import {
   type Edge,
   type Node,
   type OnSelectionChangeParams,
+  type NodeChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import NodesPanel from './NodesPanel';
@@ -52,7 +54,7 @@ const getEdgeId = () => `edge-${++edgeId}`;
 function WorkflowCanvas() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const toolbarMenuRef = useRef<HTMLDivElement>(null);
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [nodes, setNodes] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [clientCode, setClientCode] = useState('COGITATE');
@@ -235,6 +237,78 @@ function WorkflowCanvas() {
             isEndpoint: false,
           } satisfies BuilderNodeData,
         };
+      } else if (type === 'start') {
+        const defaultReqName = '/New/Request';
+
+        setNodes((currentNodes) => {
+          // Find a unique request name by checking existing start nodes
+          let uniqueReqName = defaultReqName;
+          let counter = 1;
+          const existingNames = new Set(
+            currentNodes
+              .filter((n) => n.type === 'start')
+              .map((n) => (n.data as BuilderNodeData).requestName)
+          );
+
+          while (existingNames.has(uniqueReqName)) {
+            uniqueReqName = `${defaultReqName} ${counter}`;
+            counter++;
+          }
+
+          const groupId = `group-${getNodeId()}`;
+
+          const groupNode: Node = {
+            id: groupId,
+            type: 'group',
+            position: { x: position.x - 95, y: position.y - 80 },
+            data: {},
+            style: {
+              width: 420,
+              height: 1000, // large enough; won't be visible
+              background: 'transparent',
+              border: 'none',
+              pointerEvents: 'none' as const,
+            },
+            draggable: false,
+            selectable: false,
+            connectable: false,
+          };
+
+          const labelNode: Node = {
+            id: `label-${getNodeId()}`,
+            type: 'requestNameLabel',
+            position: { x: 420 / 2 - 130, y: 10 },
+            data: {
+              label: `Request Name:\n${uniqueReqName}`,
+              requestName: uniqueReqName,
+              workflowGroupId: groupId,
+            } satisfies BuilderNodeData,
+            parentId: groupId,
+            extent: 'parent' as const,
+            draggable: true,
+            selectable: false,
+            connectable: false,
+          };
+
+          const startNode: Node = {
+            id: getNodeId(),
+            type: 'start',
+            position: { x: 95, y: 80 },
+            data: {
+              label: 'Start',
+              requestName: uniqueReqName,
+              workflowGroupId: groupId,
+              needCascading: true,
+            } satisfies BuilderNodeData,
+            parentId: groupId,
+            extent: 'parent' as const,
+          };
+
+          return currentNodes.concat(groupNode, labelNode, startNode);
+        });
+
+        setMessage(null);
+        return;
       } else {
         // Handle regular node
         const definition = nodeDefinitionByType[type];
@@ -255,7 +329,32 @@ function WorkflowCanvas() {
         };
       }
 
-      setNodes((currentNodes) => currentNodes.concat(node));
+      setNodes((currentNodes) => {
+        // Find if dropping over a group
+        const groupUnderDrop = currentNodes.find(n => 
+          n.type === 'group' && 
+          position.x >= n.position.x && 
+          position.x <= n.position.x + (n.style?.width as number ?? 420) &&
+          position.y >= n.position.y &&
+          position.y <= n.position.y + (n.style?.height as number ?? 1000)
+        );
+
+        if (groupUnderDrop && node.type !== 'group' && node.type !== 'requestNameLabel') {
+          node.parentId = groupUnderDrop.id;
+          node.extent = 'parent';
+          node.position = {
+            x: position.x - groupUnderDrop.position.x,
+            y: position.y - groupUnderDrop.position.y
+          };
+          // Inherit requestName from group's start node
+          const startInGroup = currentNodes.find(n => n.parentId === groupUnderDrop.id && n.type === 'start');
+          if (startInGroup) {
+            node.data = { ...node.data, requestName: (startInGroup.data as BuilderNodeData).requestName };
+          }
+        }
+
+        return currentNodes.concat(node);
+      });
       setMessage(null);
     },
     [screenToFlowPosition, setNodes, isExecuting]
@@ -279,10 +378,36 @@ function WorkflowCanvas() {
     if (isExecuting) return;
 
     if (selectedNodeId) {
-      setNodes((currentNodes) => currentNodes.filter((node) => node.id !== selectedNodeId));
-      setEdges((currentEdges) =>
-        currentEdges.filter((edge) => edge.source !== selectedNodeId && edge.target !== selectedNodeId)
-      );
+      setNodes((currentNodes) => {
+        const nodeToDelete = currentNodes.find((n) => n.id === selectedNodeId);
+        const idsToDelete = new Set<string>([selectedNodeId]);
+
+        // If it's a workflow anchor (label or start), delete the whole workflow
+        if (nodeToDelete?.type === 'requestNameLabel' || nodeToDelete?.type === 'start') {
+          const groupId = (nodeToDelete.data as BuilderNodeData)?.workflowGroupId;
+          if (groupId) {
+            idsToDelete.add(groupId);
+            currentNodes.forEach((n) => {
+              if (
+                n.parentId === groupId ||
+                (n.data as BuilderNodeData)?.workflowGroupId === groupId
+              ) {
+                idsToDelete.add(n.id);
+              }
+            });
+          }
+        }
+
+        // Clean up edges connected to any of the deleted nodes
+        setEdges((currentEdges) =>
+          currentEdges.filter(
+            (edge) => !idsToDelete.has(edge.source) && !idsToDelete.has(edge.target)
+          )
+        );
+
+        return currentNodes.filter((node) => !idsToDelete.has(node.id));
+      });
+
       setSelectedNodeId(null);
       return;
     }
@@ -292,6 +417,54 @@ function WorkflowCanvas() {
       setSelectedEdgeId(null);
     }
   }, [selectedEdgeId, selectedNodeId, setEdges, setNodes, isExecuting]);
+
+
+
+  // ─── Drag whole workflow when start node is dragged ─────────────
+  // Override onNodesChange to redirect start-node position changes to the group
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      const redirected: NodeChange[] = [];
+      const groupOverrides = new Map<string, { x: number; y: number }>();
+
+      for (const change of changes) {
+        if (change.type === 'position' && change.id) {
+          const node = nodes.find((n) => n.id === change.id);
+          // Redirect start-node or requestNameLabel drags to move the group
+          if (node?.type === 'start' || node?.type === 'requestNameLabel') {
+            const groupId = (node.data as Record<string, unknown>)?.workflowGroupId as string | undefined;
+            if (groupId && change.position) {
+              const groupNode = nodes.find((n) => n.id === groupId);
+              if (groupNode) {
+                // For child nodes, change.position is relative to the parent.
+                // The delta from current relative pos gives us how much the group should shift.
+                const dx = change.position.x - node.position.x;
+                const dy = change.position.y - node.position.y;
+                groupOverrides.set(groupId, {
+                  x: groupNode.position.x + dx,
+                  y: groupNode.position.y + dy,
+                });
+              }
+              // Drop the child-node position change — group moves instead
+              continue;
+            }
+          }
+        }
+        redirected.push(change);
+      }
+
+      // Apply group position overrides
+      if (groupOverrides.size > 0) {
+        const groupChanges: NodeChange[] = Array.from(groupOverrides.entries()).map(
+          ([id, position]) => ({ type: 'position', id, position, dragging: true })
+        );
+        setNodes((currentNodes) => applyNodeChanges([...redirected, ...groupChanges], currentNodes));
+      } else {
+        setNodes((currentNodes) => applyNodeChanges(redirected, currentNodes));
+      }
+    },
+    [nodes, setNodes]
+  );
 
   const clearCanvas = useCallback(() => {
     if (isExecuting) return;
@@ -429,7 +602,53 @@ function WorkflowCanvas() {
       ? selectedData.condition.expression
       : '';
 
-  const canvasStyle = isSchemaPanelOpen ? { flex: '0 0 80%', borderRight: '1px solid #e5e7eb' } : { flex: 1 };
+  // ─── Start node workflow config updater ─────────────────────────
+  // Updates the start node data and syncs the sibling label node
+  const updateWorkflowConfig = useCallback(
+    (field: keyof BuilderNodeData, value: string | boolean | Record<string, unknown>) => {
+      if (!selectedNodeId || isExecuting) return;
+      setNodes((currentNodes) =>
+        currentNodes.map((node) => {
+          // Update the start node itself
+          if (node.id === selectedNodeId) {
+            const data = (node.data ?? {}) as BuilderNodeData;
+            return { ...node, data: { ...data, [field]: value } };
+          }
+          // If updating requestName, also sync the sibling label node
+          if (field === 'requestName') {
+            const startNode = currentNodes.find((n) => n.id === selectedNodeId);
+            const groupId = (startNode?.data as BuilderNodeData)?.workflowGroupId;
+            if (groupId && node.type === 'requestNameLabel' && (node.data as BuilderNodeData)?.workflowGroupId === groupId) {
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  requestName: value,
+                  label: `Request Name:\n${value}`,
+                },
+              };
+            }
+            // Also update requestName on all action nodes in this group
+            if (groupId && node.parentId === groupId && node.type !== 'start' && node.type !== 'requestNameLabel' && node.type !== 'group') {
+              return {
+                ...node,
+                data: { ...(node.data as BuilderNodeData), requestName: value as string },
+              };
+            }
+          }
+          return node;
+        })
+      );
+    },
+    [selectedNodeId, setNodes, isExecuting]
+  );
+
+  const hasSidebarOpen = isSchemaPanelOpen || selectedNode?.type === 'start';
+  const canvasStyle = { 
+    flex: 1, 
+    minWidth: 0, 
+    borderRight: hasSidebarOpen ? '1px solid #e5e7eb' : 'none' 
+  };
 
   return (
     <div className="builder-layout">
@@ -627,6 +846,7 @@ function WorkflowCanvas() {
           </div>
         )}
 
+
         <div className="builder-workspace">
           <div className="builder-content">
             <div style={{ display: 'flex', gap: '0', flex: 1, minHeight: 0 }}>
@@ -663,6 +883,85 @@ function WorkflowCanvas() {
                     onChange={(event) => setSerializedSchema(event.target.value)}
                     placeholder="Export schema here or paste to import..."
                   />
+                </div>
+              )}
+
+              {selectedNode?.type === 'start' && (
+                <div className="start-node-config-sidebar">
+                  <div className="start-node-config-header">
+                    <span className="start-node-config-icon">⚙</span>
+                    <span>Workflow Config</span>
+                  </div>
+                  <div className="start-node-config-fields sidebar-fields">
+                    <label className="start-node-config-field start-node-config-field-stacked">
+                      <span className="start-node-config-label">Request Name</span>
+                      <input
+                        className="toolbar-input start-node-config-input"
+                        value={selectedData.requestName ?? ''}
+                        onChange={(e) => updateWorkflowConfig('requestName', e.target.value)}
+                        placeholder="/Quote/Summary"
+                        spellCheck={false}
+                        style={{ minWidth: '100%', width: '100%' }}
+                      />
+                    </label>
+
+                    <div className="start-node-config-toggles sidebar-toggles">
+                      <label className="start-node-config-toggle">
+                        <button
+                          type="button"
+                          className={`toggle-switch ${selectedData.needCascading !== false ? 'on' : 'off'}`}
+                          onClick={() => updateWorkflowConfig('needCascading', selectedData.needCascading === false ? true : false)}
+                          aria-pressed={selectedData.needCascading !== false}
+                        >
+                          <span className="toggle-thumb" />
+                        </button>
+                        <span>Need Cascading</span>
+                      </label>
+
+                      <label className="start-node-config-toggle">
+                        <button
+                          type="button"
+                          className={`toggle-switch ${selectedData.hookCallCascading ? 'on' : 'off'}`}
+                          onClick={() => updateWorkflowConfig('hookCallCascading', !selectedData.hookCallCascading)}
+                          aria-pressed={!!selectedData.hookCallCascading}
+                        >
+                          <span className="toggle-thumb" />
+                        </button>
+                        <span>Hook Call Cascading</span>
+                      </label>
+                    </div>
+
+                    <label className="start-node-config-field start-node-config-field-stacked">
+                      <span className="start-node-config-label">
+                        Static Params
+                        <span className="start-node-config-label-hint">JSON</span>
+                      </span>
+                      <textarea
+                        className="start-node-config-textarea"
+                        value={
+                          selectedData.staticParams
+                            ? JSON.stringify(selectedData.staticParams, null, 2)
+                            : ''
+                        }
+                        onChange={(e) => {
+                          const raw = e.target.value.trim();
+                          if (!raw) {
+                            updateWorkflowConfig('staticParams', {});
+                            return;
+                          }
+                          try {
+                            const parsed = JSON.parse(raw) as Record<string, unknown>;
+                            updateWorkflowConfig('staticParams', parsed);
+                          } catch {
+                            // keep raw text; don't update until valid
+                          }
+                        }}
+                        placeholder={'{\n  "key": "value"\n}'}
+                        rows={6}
+                        spellCheck={false}
+                      />
+                    </label>
+                  </div>
                 </div>
               )}
             </div>
