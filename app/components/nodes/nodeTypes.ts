@@ -82,7 +82,6 @@ export const nodeDefinitions: NodeDefinition[] = [
     functionName: 'GenerateQuoteNumber',
     defaultModuleName: '@cogitate/core-pos-components',
     description: 'Generates or updates a quote number from product master',
-    defaultData: { requestName: '/Quote/Landing' },
   },
   {
     type: 'getGeoCodeAddress',
@@ -93,7 +92,6 @@ export const nodeDefinitions: NodeDefinition[] = [
     functionName: 'getGeoCodeAddressHook',
     defaultModuleName: '@cogitate/core-pos-components',
     description: 'Fetches geocoding information for addresses using Google Maps API',
-    defaultData: { requestName: '/Quote/Landing' },
   },
   {
     type: 'executeUnderwritingRules',
@@ -104,7 +102,6 @@ export const nodeDefinitions: NodeDefinition[] = [
     functionName: 'ExecuteUnderwritingRules',
     defaultModuleName: '@cogitate/core-pos-components',
     description: 'Executes underwriting rules against the policy model',
-    defaultData: { requestName: '/Quote/Summary' },
   },
   {
     type: 'getRatingFromThirdParty',
@@ -115,7 +112,6 @@ export const nodeDefinitions: NodeDefinition[] = [
     functionName: 'getRatingFromThirdParty',
     defaultModuleName: '@cogitate/core-pos-components',
     description: 'Invokes a third-party rater to get policy rating',
-    defaultData: { requestName: '/Quote/Summary' },
   },
   {
     type: 'invokeMultipleRaters',
@@ -126,7 +122,6 @@ export const nodeDefinitions: NodeDefinition[] = [
     functionName: 'invokeMultipleRaters',
     defaultModuleName: '@cogitate/core-pos-components',
     description: 'Runs multiple raters concurrently and returns consolidated results',
-    defaultData: { requestName: '/Quote/Summary' },
   },
   {
     type: 'getRaterKey',
@@ -137,7 +132,6 @@ export const nodeDefinitions: NodeDefinition[] = [
     functionName: 'getRaterKeyFromProductMaster',
     defaultModuleName: '@cogitate/core-pos-components',
     description: 'Retrieves the rater key for a product from master configuration',
-    defaultData: { requestName: '/Quote/Summary' },
   },
   {
     type: 'startTransaction',
@@ -220,7 +214,6 @@ export const nodeDefinitions: NodeDefinition[] = [
     functionName: 'PublishEvent',
     defaultModuleName: '@cogitate/core-pos-components',
     description: 'Publishes a policy event to the event system for lifecycle tracking',
-    defaultData: { requestName: '/Application/Summary' },
   },
   {
     type: 'generateForms',
@@ -231,7 +224,6 @@ export const nodeDefinitions: NodeDefinition[] = [
     functionName: 'generateForms',
     defaultModuleName: '@cogitate/core-pos-components',
     description: 'Generates forms by queuing an async web job',
-    defaultData: { requestName: '/Application/Summary' },
   },
   {
     type: 'generateFormsDraft',
@@ -242,7 +234,6 @@ export const nodeDefinitions: NodeDefinition[] = [
     functionName: 'generateFormsDraft',
     defaultModuleName: '@cogitate/core-pos-components',
     description: 'Generates draft forms for a policy transaction',
-    defaultData: { requestName: '/Quote/Summary' },
   },
   {
     type: 'getEmailTemplateBody',
@@ -253,7 +244,6 @@ export const nodeDefinitions: NodeDefinition[] = [
     functionName: 'getEmailTemplateBody',
     defaultModuleName: '@cogitate/core-pos-components',
     description: 'Retrieves and returns the email template body for notification',
-    defaultData: { requestName: '/Application/Summary' },
   },
   {
     type: 'copyDocuments',
@@ -264,7 +254,6 @@ export const nodeDefinitions: NodeDefinition[] = [
     functionName: 'copyDocuments',
     defaultModuleName: '@cogitate/core-pos-components',
     description: 'Copies documents from source to destination via DMS API',
-    defaultData: { requestName: '/Application/Summary' },
   },
   {
     type: 'invokeAdaptiveAPI',
@@ -297,7 +286,6 @@ export const nodeDefinitions: NodeDefinition[] = [
     functionName: 'deleteQuoteVersionsOnBind',
     defaultModuleName: '@cogitate/core-pos-components',
     description: 'Deletes intermediate quote versions when a quote is bound',
-    defaultData: { requestName: '/Application/Summary' },
   },
   {
     type: 'getMarkelForms',
@@ -308,7 +296,6 @@ export const nodeDefinitions: NodeDefinition[] = [
     functionName: 'getMarkelForms',
     defaultModuleName: '@cogitate/core-pos-components',
     description: 'Retrieves forms from Markel rater response',
-    defaultData: { requestName: '/Quote/Summary' },
   },
 ];
 
