@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Edit3 } from 'lucide-react';
 import {
   nodeDefinitions,
   type ActionCategory,
@@ -61,9 +62,8 @@ function CustomHookTile({
 }) {
   return (
     <div className="custom-hook-item-row">
-      <button
-        type="button"
-        className="node-item"
+      <div
+        className="node-item custom-hook-node-item"
         draggable
         onDragStart={(event) => onDragStart(event, `customHook-${hook.id}`, hook)}
         title={hook.functionName}
@@ -76,16 +76,18 @@ function CustomHookTile({
           <small>{hook.functionName}</small>
           <span className="custom-badge">custom</span>
         </span>
-      </button>
-
-      <button
-        type="button"
-        className="custom-hook-edit-btn"
-        onClick={() => onEdit(hook.id)}
-        title="Edit custom hook"
-      >
-        Edit
-      </button>
+        <button
+          type="button"
+          className="custom-hook-edit-btn"
+          onClick={(event) => {
+            event.stopPropagation();
+            onEdit(hook.id);
+          }}
+          title="Edit custom hook"
+        >
+          <Edit3 className="edit-icon" />
+        </button>
+      </div>
     </div>
   );
 }
