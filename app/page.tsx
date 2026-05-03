@@ -14,83 +14,71 @@ export default function HomePage() {
       const params = new URLSearchParams(window.location.search);
       setViewState(params.get('view') === 'builder' ? 'builder' : 'list');
     };
-
     syncViewFromUrl();
     window.addEventListener('popstate', syncViewFromUrl);
-
-    return () => {
-      window.removeEventListener('popstate', syncViewFromUrl);
-    };
+    return () => window.removeEventListener('popstate', syncViewFromUrl);
   }, []);
 
   const setView = (nextView: 'list' | 'builder') => {
     const params = new URLSearchParams(window.location.search);
-
-    if (nextView === 'builder') {
-      params.set('view', 'builder');
-    } else {
-      params.delete('view');
-    }
-
+    if (nextView === 'builder') { params.set('view', 'builder'); }
+    else { params.delete('view'); }
     const query = params.toString();
     setViewState(nextView);
     router.replace(query ? `/?${query}` : '/', { scroll: false });
   };
 
   return (
-    <div style={{ height: '100vh', overflow: 'hidden', backgroundColor: '#f9f9f9' }}>
+    <div className="app-shell">
       {/* Navigation Header */}
-      <nav
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '20px',
-          padding: '16px 20px',
-          backgroundColor: '#ffffff',
-          borderBottom: '1px solid #e0e0e0',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#0066cc' }}>
-          🏗️ Workflow Builder POC
+      <header className="app-nav">
+        <div className="app-nav-brand">
+          <span className="app-nav-logo" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <rect x="1" y="1" width="8" height="8" rx="2" fill="#6366f1"/>
+              <rect x="13" y="1" width="8" height="8" rx="2" fill="#6366f1" opacity="0.5"/>
+              <rect x="1" y="13" width="8" height="8" rx="2" fill="#6366f1" opacity="0.5"/>
+              <rect x="13" y="13" width="8" height="8" rx="2" fill="#6366f1" opacity="0.75"/>
+            </svg>
+          </span>
+          <span className="app-nav-name">Workflow Builder</span>
+          <span className="app-nav-divider" aria-hidden="true" />
+          <span className="app-nav-org">CTS · Cogitate</span>
         </div>
-        <div style={{ display: 'flex', gap: '12px', marginLeft: 'auto' }}>
+
+        <nav className="app-nav-tabs" role="tablist" aria-label="Main navigation">
           <button
+            role="tab"
+            aria-selected={view === 'list'}
+            className={`app-nav-tab ${view === 'list' ? 'active' : ''}`}
             onClick={() => setView('list')}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: view === 'list' ? '#0066cc' : '#e0e0e0',
-              color: view === 'list' ? 'white' : 'black',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontWeight: view === 'list' ? 'bold' : 'normal',
-            }}
           >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M2 4h12M2 8h12M2 12h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+            </svg>
             Workflows
           </button>
           <button
+            role="tab"
+            aria-selected={view === 'builder'}
+            className={`app-nav-tab ${view === 'builder' ? 'active' : ''}`}
             onClick={() => setView('builder')}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: view === 'builder' ? '#0066cc' : '#e0e0e0',
-              color: view === 'builder' ? 'white' : 'black',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontWeight: view === 'builder' ? 'bold' : 'normal',
-            }}
           >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+              <rect x="9" y="2" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+              <rect x="2" y="9" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+              <rect x="9" y="9" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+            </svg>
             Builder
           </button>
-        </div>
-      </nav>
+        </nav>
+      </header>
 
       {/* Content */}
-      <div style={{ height: 'calc(100vh - 70px)', overflow: 'hidden' }}>
+      <main className="app-content">
         {view === 'list' ? <WorkflowList /> : <WorkflowBuilder />}
-      </div>
+      </main>
     </div>
   );
 }

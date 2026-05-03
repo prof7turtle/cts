@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Maximize2, Trash2, Play, Pause, Square, RotateCcw, Settings2,
+  Download, Upload, FileJson, TerminalSquare, Bot, Eraser, MessageSquare, X, Copy, Check,
+} from 'lucide-react';
+import {
   ReactFlow,
   ReactFlowProvider,
   addEdge,
@@ -63,6 +67,42 @@ function WorkflowCanvas() {
   const [isLogsDockExpanded, setIsLogsDockExpanded] = useState(false);
   const [isToolbarMenuOpen, setIsToolbarMenuOpen] = useState(false);
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
+  const [schemaSidebarWidth, setSchemaSidebarWidth] = useState(280);
+  const [chatSidebarWidth, setChatSidebarWidth] = useState(320);
+  const [isSchemaCopied, setIsSchemaCopied] = useState(false);
+
+  const handleCopySchema = useCallback(() => {
+    navigator.clipboard.writeText(serializedSchema).then(() => {
+      setIsSchemaCopied(true);
+      setTimeout(() => setIsSchemaCopied(false), 2000);
+    });
+  }, [serializedSchema]);
+
+  const startSchemaResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = schemaSidebarWidth;
+    const onMove = (ev: MouseEvent) => {
+      const delta = startX - ev.clientX;
+      setSchemaSidebarWidth(Math.max(200, Math.min(600, startW + delta)));
+    };
+    const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [schemaSidebarWidth]);
+
+  const startChatResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = chatSidebarWidth;
+    const onMove = (ev: MouseEvent) => {
+      const delta = startX - ev.clientX;
+      setChatSidebarWidth(Math.max(240, Math.min(560, startW + delta)));
+    };
+    const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [chatSidebarWidth]);
   const { screenToFlowPosition, fitView } = useReactFlow();
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
 
@@ -447,41 +487,42 @@ function WorkflowCanvas() {
                 placeholder="e.g., COGITATE"
               />
             </label>
-            <button type="button" onClick={() => fitView({ padding: 0.2 })}>
-              Fit View
+            <button type="button" onClick={() => fitView({ padding: 0.2 })} title="Fit view">
+              <Maximize2 size={13} /> Fit
             </button>
             <button
               type="button"
               onClick={deleteSelection}
               disabled={!selectedNodeId && !selectedEdgeId}
+              title="Delete selected"
             >
-              Delete
+              <Trash2 size={13} /> Delete
             </button>
 
             <div className="exec-controls-inline">
               {engine.state !== 'running' && engine.state !== 'paused' && (
-                <button type="button" className="exec-btn exec-btn-run" onClick={handleRun}>
-                  Execute Workflow
+                <button type="button" className="exec-btn exec-btn-run" onClick={handleRun} title="Execute workflow">
+                  <Play size={12} /> Execute
                 </button>
               )}
               {engine.state === 'running' && (
-                <button type="button" className="exec-btn exec-btn-pause" onClick={handlePause}>
-                  Pause
+                <button type="button" className="exec-btn exec-btn-pause" onClick={handlePause} title="Pause execution">
+                  <Pause size={12} /> Pause
                 </button>
               )}
               {engine.state === 'paused' && (
-                <button type="button" className="exec-btn exec-btn-run" onClick={handleResume}>
-                  Resume
+                <button type="button" className="exec-btn exec-btn-run" onClick={handleResume} title="Resume execution">
+                  <Play size={12} /> Resume
                 </button>
               )}
               {isExecuting && (
-                <button type="button" className="exec-btn exec-btn-stop" onClick={handleStop}>
-                  Stop
+                <button type="button" className="exec-btn exec-btn-stop" onClick={handleStop} title="Stop execution">
+                  <Square size={12} /> Stop
                 </button>
               )}
               {(engine.state === 'completed' || engine.state === 'error') && (
-                <button type="button" className="exec-btn exec-btn-reset" onClick={handleReset}>
-                  Reset
+                <button type="button" className="exec-btn exec-btn-reset" onClick={handleReset} title="Reset">
+                  <RotateCcw size={12} /> Reset
                 </button>
               )}
             </div>
@@ -491,78 +532,94 @@ function WorkflowCanvas() {
                 type="button"
                 className="toolbar-menu-trigger"
                 onClick={() => setIsToolbarMenuOpen((prev) => !prev)}
-                aria-label="Open canvas actions"
+                aria-label="Canvas actions"
                 aria-haspopup="menu"
                 aria-expanded={isToolbarMenuOpen}
+                title="Canvas actions"
               >
-                ...
+                <Settings2 size={14} />
               </button>
 
               {isToolbarMenuOpen && (
                 <div className="toolbar-menu-dropdown" role="menu">
                   <button type="button" role="menuitem" onClick={() => { clearCanvas(); setIsToolbarMenuOpen(false); }}>
-                    Clear Canvas
+                    <Eraser size={13} /> Clear Canvas
                   </button>
                   <button type="button" role="menuitem" onClick={() => { exportSchema(); setIsToolbarMenuOpen(false); }}>
-                    Export Schema
+                    <FileJson size={13} /> Export Schema
                   </button>
                   <button type="button" role="menuitem" onClick={() => { handleImportSchemaClick(); setIsToolbarMenuOpen(false); }}>
-                    Import Schema
+                    <Upload size={13} /> Import Schema
                   </button>
                   <button type="button" role="menuitem" onClick={() => { downloadSchema(); setIsToolbarMenuOpen(false); }}>
-                    ⬇ Download JSON
+                    <Download size={13} /> Download JSON
                   </button>
+                  <div className="toolbar-menu-divider" />
                   <button
                     type="button"
                     role="menuitemcheckbox"
                     aria-checked={isSchemaPanelOpen}
-                    onClick={() => {
-                      setIsSchemaPanelOpen((prev) => !prev);
-                      setIsToolbarMenuOpen(false);
-                    }}
+                    onClick={() => { setIsSchemaPanelOpen((prev) => !prev); setIsToolbarMenuOpen(false); }}
                   >
-                    {isSchemaPanelOpen ? '✓ ' : ''}Schema Output
+                    <FileJson size={13} />
+                    <span>Schema Output</span>
+                    {isSchemaPanelOpen && <span className="menu-check">✓</span>}
                   </button>
                   <button
                     type="button"
                     role="menuitemcheckbox"
                     aria-checked={isLogsDockVisible}
                     onClick={() => {
-                      setIsLogsDockVisible((prev) => {
-                        const next = !prev;
-                        if (next) {
-                          setIsLogsDockExpanded(true);
-                        }
-                        return next;
-                      });
+                      setIsLogsDockVisible((prev) => { const next = !prev; if (next) setIsLogsDockExpanded(true); return next; });
                       setIsToolbarMenuOpen(false);
                     }}
                   >
-                    {isLogsDockVisible ? '✓ ' : ''}Execution Logs
+                    <TerminalSquare size={13} />
+                    <span>Execution Logs</span>
+                    {isLogsDockVisible && <span className="menu-check">✓</span>}
                   </button>
                   <button
                     type="button"
                     role="menuitemcheckbox"
                     aria-checked={!isChatCollapsed}
-                    onClick={() => {
-                      setIsChatCollapsed((prev) => !prev);
-                      setIsToolbarMenuOpen(false);
-                    }}
+                    onClick={() => { setIsChatCollapsed((prev) => !prev); setIsToolbarMenuOpen(false); }}
                   >
-                    {!isChatCollapsed ? '✓ ' : ''}AI Chat Panel
+                    <Bot size={13} />
+                    <span>AI Chat Panel</span>
+                    {!isChatCollapsed && <span className="menu-check">✓</span>}
                   </button>
                 </div>
               )}
             </div>
           </div>
 
-          <div
-            className={`builder-toolbar-right builder-toolbar-right-rail ${isChatCollapsed ? 'collapsed' : ''}`}
-            aria-hidden={isChatCollapsed}
-          />
+          {/* AI toggle in toolbar right rail */}
+          <div className={`builder-toolbar-right builder-toolbar-right-rail`}>
+              <button
+                type="button"
+                className={`toolbar-ai-btn ${!isChatCollapsed ? 'active' : ''}`}
+                onClick={() => setIsChatCollapsed(!isChatCollapsed)}
+                title="Toggle Workflow AI"
+              >
+                <MessageSquare size={14} />
+                <span>Workflow AI</span>
+              </button>
+          </div>
         </div>
 
-        {message && <div className="toolbar-message-row"><span className="toolbar-message">{message}</span></div>}
+        {message && (
+          <div className="toolbar-message-row">
+            <span className="toolbar-message">{message}</span>
+            <button
+              type="button"
+              className="toolbar-message-dismiss"
+              onClick={() => setMessage(null)}
+              aria-label="Dismiss"
+            >
+              <X size={12} />
+            </button>
+          </div>
+        )}
 
         {selectedNode?.type === 'ifCondition' && (
           <div className="condition-panel">
@@ -629,8 +686,8 @@ function WorkflowCanvas() {
 
         <div className="builder-workspace">
           <div className="builder-content">
-            <div style={{ display: 'flex', gap: '0', flex: 1, minHeight: 0 }}>
-              <div ref={reactFlowWrapper} className="canvas-wrap" style={canvasStyle}>
+            <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+              <div ref={reactFlowWrapper} className="canvas-wrap" style={{ flex: 1, minWidth: 0 }}>
                 <ReactFlow
                   nodes={displayNodes}
                   edges={displayEdges}
@@ -655,25 +712,71 @@ function WorkflowCanvas() {
               </div>
 
               {isSchemaPanelOpen && (
-                <div className="schema-panel" style={{ flex: '0 0 20%' }}>
-                  <label htmlFor="hook-schema">Schema Output</label>
-                  <textarea
-                    id="hook-schema"
-                    value={serializedSchema}
-                    onChange={(event) => setSerializedSchema(event.target.value)}
-                    placeholder="Export schema here or paste to import..."
+                <>
+                  {/* Drag handle */}
+                  <div
+                    className="panel-resize-handle"
+                    onMouseDown={startSchemaResize}
+                    title="Drag to resize"
+                    aria-hidden="true"
                   />
-                </div>
+                  <div className="schema-sidebar" style={{ width: schemaSidebarWidth }}>
+                    <div className="schema-sidebar-header">
+                      <span>Schema Output</span>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <button
+                          type="button"
+                          className="schema-sidebar-icon-btn"
+                          onClick={handleCopySchema}
+                          title={isSchemaCopied ? 'Copied!' : 'Copy schema'}
+                          aria-label="Copy schema"
+                        >
+                          {isSchemaCopied ? <Check size={13} /> : <Copy size={13} />}
+                        </button>
+                        <button
+                          type="button"
+                          className="schema-sidebar-icon-btn"
+                          onClick={() => setIsSchemaPanelOpen(false)}
+                          aria-label="Close schema panel"
+                        >
+                          <X size={13} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="schema-code-wrap">
+                      <textarea
+                        id="hook-schema"
+                        className="schema-sidebar-textarea"
+                        value={serializedSchema}
+                        onChange={(event) => setSerializedSchema(event.target.value)}
+                        placeholder="Export schema here or paste to import..."
+                        spellCheck={false}
+                      />
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           </div>
 
-          <aside className={`chat-sidebar ${isChatCollapsed ? 'collapsed' : ''}`}>
+          <aside
+            className={`chat-sidebar ${isChatCollapsed ? 'collapsed' : ''}`}
+            style={!isChatCollapsed ? { width: chatSidebarWidth, minWidth: chatSidebarWidth } : {}}
+          >
             {!isChatCollapsed && (
-              <WorkflowChatPanel
-                currentSchema={canvasToHookSchema(nodes, edges, clientCode)}
-                onApplySchema={applyAISchema}
-              />
+              <>
+                <div
+                  className="panel-resize-handle"
+                  onMouseDown={startChatResize}
+                  title="Drag to resize"
+                  aria-hidden="true"
+                />
+                <WorkflowChatPanel
+                  currentSchema={canvasToHookSchema(nodes, edges, clientCode)}
+                  onApplySchema={applyAISchema}
+                  onClose={() => setIsChatCollapsed(true)}
+                />
+              </>
             )}
           </aside>
         </div>
