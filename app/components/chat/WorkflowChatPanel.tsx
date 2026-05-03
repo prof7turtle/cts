@@ -3,43 +3,43 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
+import { ArrowUp, X } from 'lucide-react';
 import { extractAgentPayload } from '@/lib/workflow-ai/parser';
 import { normalizeHookConfigConditions } from '@/lib/workflow-ai/normalize';
 import { getMessageText } from './messageUtils';
 import type { WorkflowChatProps } from './types';
 
-export default function WorkflowChatPanel({
-  currentSchema,
-  onApplySchema,
-}: WorkflowChatProps) {
+interface Props extends WorkflowChatProps {
+  onClose?: () => void;
+}
+
+export default function WorkflowChatPanel({ currentSchema, onApplySchema, onClose }: Props) {
   const [prompt, setPrompt] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const appliedSignature = useRef<string>('');
   const listRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const { messages, sendMessage, status: chatStatus } = useChat({
-    transport: new DefaultChatTransport({
-      api: '/api/chat',
-    }),
+    transport: new DefaultChatTransport({ api: '/api/chat' }),
   });
 
   const latestAssistantText = useMemo(() => {
     const reversed = [...messages].reverse();
-    const latestAssistant = reversed.find((message) => message.role === 'assistant');
+    const latestAssistant = reversed.find((m) => m.role === 'assistant');
     return latestAssistant ? getMessageText(latestAssistant) : '';
   }, [messages]);
+
   const isResponding = chatStatus === 'submitted' || chatStatus === 'streaming';
 
   useEffect(() => {
     if (!latestAssistantText) return;
-
     const payload = extractAgentPayload(latestAssistantText);
     const signature = JSON.stringify(payload);
     if (signature === appliedSignature.current) return;
-
     if (payload.hookConfig) {
       onApplySchema(normalizeHookConfigConditions(payload.hookConfig));
-      setStatus('Applied HookConfig from chat response.');
+      setStatus('Applied HookConfig from AI response.');
       appliedSignature.current = signature;
     }
   }, [latestAssistantText, onApplySchema]);
@@ -51,34 +51,51 @@ export default function WorkflowChatPanel({
 
   const handleSend = async () => {
     const text = prompt.trim();
-    if (!text || isResponding) {
-      return;
-    }
+    if (!text || isResponding) return;
     setStatus(null);
-    await sendMessage(
-      { text },
-      {
-        body: {
-          workflowContext: currentSchema,
-        },
-      }
-    );
+    await sendMessage({ text }, { body: { workflowContext: currentSchema } });
     setPrompt('');
+    textareaRef.current?.focus();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
   };
 
   return (
     <section className="chat-panel">
+      {/* Header */}
       <div className="chat-panel-header">
-        <h3>Workflow AI</h3>
-        <span className="chat-state">
-          {chatStatus === 'streaming' ? 'Thinking...' : 'Ready'}
-        </span>
+        <div className="chat-panel-header-left">
+          <span className="chat-panel-ai-dot" />
+          <h3>Workflow AI</h3>
+        </div>
+        <div className="chat-panel-header-right">
+          <span className="chat-state">
+            {chatStatus === 'streaming' ? 'Thinking…' : 'Ready'}
+          </span>
+          {onClose && (
+            <button
+              type="button"
+              className="chat-panel-close"
+              onClick={onClose}
+              title="Close AI panel"
+              aria-label="Close AI panel"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
       </div>
 
+      {/* Messages */}
       <div ref={listRef} className="chat-messages">
         {messages.length === 0 && (
           <div className="chat-empty">
-            Describe the workflow you want. The assistant will generate HookSchema JSON and update the canvas.
+            Describe the workflow you want. The assistant will generate a HookSchema and update the canvas.
           </div>
         )}
 
@@ -87,20 +104,18 @@ export default function WorkflowChatPanel({
             key={message.id}
             className={`chat-msg ${message.role === 'user' ? 'chat-msg-user' : 'chat-msg-assistant'}`}
           >
-            <header>{message.role === 'user' ? 'You' : 'Assistant'}</header>
+            <header>{message.role === 'user' ? 'You' : 'AI'}</header>
             <pre>{getMessageText(message)}</pre>
           </article>
         ))}
 
         {isResponding && (
           <article className="chat-msg chat-msg-assistant chat-msg-loading">
-            <header>Assistant</header>
+            <header>AI</header>
             <div className="chat-loading-line">
-              Generating response
+              Generating
               <span className="chat-dots" aria-hidden="true">
-                <span>.</span>
-                <span>.</span>
-                <span>.</span>
+                <span>.</span><span>.</span><span>.</span>
               </span>
             </div>
           </article>
@@ -109,21 +124,31 @@ export default function WorkflowChatPanel({
 
       {status && <div className="chat-status">{status}</div>}
 
-      <div className="chat-input-row">
+      {/* Input area — send button INSIDE the box */}
+      <div className="chat-input-wrap">
         <textarea
+          ref={textareaRef}
+          className="chat-input-textarea"
           value={prompt}
-          onChange={(event) => setPrompt(event.target.value)}
-          placeholder="e.g. Add a Pre hook for /Quote/Summary that runs ExecuteUnderwritingRules after GenerateQuoteNumber"
-          rows={3}
+          onChange={(e) => setPrompt(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="e.g. Add a Pre hook for /Quote/Summary…"
+          rows={2}
+          disabled={isResponding}
+          aria-label="Message input"
         />
         <button
           type="button"
+          className={`chat-send-btn ${!prompt.trim() || isResponding ? 'disabled' : ''}`}
           onClick={handleSend}
-          disabled={isResponding}
+          disabled={!prompt.trim() || isResponding}
+          title="Send (Enter)"
+          aria-label="Send message"
         >
-          {isResponding ? 'Sending...' : 'Send'}
+          <ArrowUp size={14} strokeWidth={2.5} />
         </button>
       </div>
+      <p className="chat-input-hint">Enter to send · Shift+Enter for new line</p>
     </section>
   );
 }
