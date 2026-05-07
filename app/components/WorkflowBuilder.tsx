@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Maximize2, Trash2, Play, Pause, Square, RotateCcw, Settings2,
-  Download, Upload, FileJson, TerminalSquare, Bot, Eraser, MessageSquare, X, Copy, Check,
+  Download, Upload, FileJson, TerminalSquare, Bot, Eraser, MessageSquare, X, Copy, Check, Save,
 } from 'lucide-react';
 import {
   ReactFlow,
@@ -72,6 +73,7 @@ function WorkflowCanvas() {
   const [schemaSidebarWidth, setSchemaSidebarWidth] = useState(280);
   const [chatSidebarWidth, setChatSidebarWidth] = useState(320);
   const [isSchemaCopied, setIsSchemaCopied] = useState(false);
+  const [isIfElseModalOpen, setIsIfElseModalOpen] = useState(false);
 
   const handleCopySchema = useCallback(() => {
     navigator.clipboard.writeText(serializedSchema).then(() => {
@@ -812,8 +814,18 @@ function WorkflowCanvas() {
             </div>
           </div>
 
-          {/* AI toggle in toolbar right rail */}
+          {/* AI toggle + Schema Output in toolbar right rail */}
           <div className={`builder-toolbar-right builder-toolbar-right-rail`}>
+              <button
+                type="button"
+                className={`toolbar-ai-btn ${isSchemaPanelOpen ? 'active' : ''}`}
+                onClick={() => setIsSchemaPanelOpen((prev) => !prev)}
+                title="Toggle Schema Output"
+              >
+                <FileJson size={14} />
+                <span>Schema Output</span>
+              </button>
+              <span className="toolbar-rail-divider" aria-hidden="true" />
               <button
                 type="button"
                 className={`toolbar-ai-btn ${!isChatCollapsed ? 'active' : ''}`}
@@ -840,68 +852,98 @@ function WorkflowCanvas() {
           </div>
         )}
 
-        {selectedNode?.type === 'ifCondition' && (
-          <div className="condition-panel">
-            <label>
-              Condition Expression
-              <input
-                className="toolbar-input"
-                value={selectedCondition}
-                onChange={(event) => updateCondition(event.target.value)}
-                placeholder='e.g., Transaction.Type = "Quote" AND Amount > 1000'
-                style={{ marginLeft: '8px' }}
-              />
-            </label>
+        {/* If-Else modal — mounted via portal to escape CSS transforms */}
+        {isIfElseModalOpen && selectedNode?.type === 'ifCondition' && typeof document !== 'undefined' && createPortal(
+          <div className="ifelse-modal-backdrop" onClick={() => setIsIfElseModalOpen(false)}>
+            <div className="ifelse-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="ifelse-modal-header">
+                <div className="ifelse-modal-header-left">
+                  <span className="ifelse-modal-icon">⬡</span>
+                  <span>If / Else Condition</span>
+                </div>
+                <button
+                  type="button"
+                  className="ifelse-modal-close"
+                  onClick={() => setIsIfElseModalOpen(false)}
+                  aria-label="Close"
+                >
+                  <X size={14} />
+                </button>
+              </div>
 
-            <label style={{ flex: '1 1 45%' }}>
-              Module Name
-              <input
-                className="toolbar-input"
-                value={selectedData.moduleName ?? ''}
-                onChange={(e) => updateNodeData('moduleName', e.target.value)}
-                placeholder="@cogitate/core-pos-components"
-              />
-            </label>
+              <div className="ifelse-modal-body">
+                <div className="ifelse-modal-field">
+                  <label className="ifelse-modal-label">Condition Expression</label>
+                  <input
+                    className="ifelse-modal-input"
+                    value={selectedCondition}
+                    onChange={(event) => updateCondition(event.target.value)}
+                    placeholder='e.g., Transaction.Type = "Quote" AND Amount > 1000'
+                    autoFocus
+                  />
+                </div>
 
-            <label style={{ flex: '1 1 45%' }}>
-              Condition
-              <input
-                className="toolbar-input"
-                value={selectedCondition}
-                onChange={(e) => updateNodeData('condition', e.target.value)}
-                placeholder="Transaction.Type = 'Application'"
-              />
-            </label>
+                <div className="ifelse-modal-field">
+                  <label className="ifelse-modal-label">Module Name</label>
+                  <input
+                    className="ifelse-modal-input"
+                    value={selectedData.moduleName ?? ''}
+                    onChange={(e) => updateNodeData('moduleName', e.target.value)}
+                    placeholder="@cogitate/core-pos-components"
+                  />
+                </div>
 
-            <label style={{ flex: '1 1 45%' }}>
-              Path
-              <input
-                className="toolbar-input"
-                value={selectedData.path ?? ''}
-                onChange={(e) => updateNodeData('path', e.target.value)}
-                placeholder="COGITATE/configs/Personal/HO3/hooksCall/property.js"
-              />
-            </label>
+                <div className="ifelse-modal-field">
+                  <label className="ifelse-modal-label">Path</label>
+                  <input
+                    className="ifelse-modal-input"
+                    value={selectedData.path ?? ''}
+                    onChange={(e) => updateNodeData('path', e.target.value)}
+                    placeholder="COGITATE/configs/Personal/HO3/hooksCall/property.js"
+                  />
+                </div>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '0 0 auto' }}>
-              <input
-                type="checkbox"
-                checked={selectedData.isEndpoint ?? false}
-                onChange={(e) => updateNodeData('isEndpoint', e.target.checked)}
-              />
-              Is Endpoint
-            </label>
+                <div className="ifelse-modal-toggles">
+                  <label className="ifelse-modal-toggle-label">
+                    <input
+                      type="checkbox"
+                      checked={selectedData.isEndpoint ?? false}
+                      onChange={(e) => updateNodeData('isEndpoint', e.target.checked)}
+                      className="ifelse-modal-checkbox"
+                    />
+                    Is Endpoint
+                  </label>
+                  <label className="ifelse-modal-toggle-label">
+                    <input
+                      type="checkbox"
+                      checked={selectedData.callFunction !== false}
+                      onChange={(e) => updateNodeData('callFunction', e.target.checked)}
+                      className="ifelse-modal-checkbox"
+                    />
+                    Call Function
+                  </label>
+                </div>
+              </div>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '0 0 auto' }}>
-              <input
-                type="checkbox"
-                checked={selectedData.callFunction !== false}
-                onChange={(e) => updateNodeData('callFunction', e.target.checked)}
-              />
-              Call Function
-            </label>
+              <div className="ifelse-modal-footer">
+                <button
+                  type="button"
+                  className="ifelse-modal-cancel"
+                  onClick={() => setIsIfElseModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="ifelse-modal-save"
+                  onClick={() => setIsIfElseModalOpen(false)}
+                >
+                  <Save size={13} /> Save
+                </button>
+              </div>
+            </div>
           </div>
-        )}
+        , document.body)}
 
 
         <div className="builder-workspace">
@@ -917,6 +959,11 @@ function WorkflowCanvas() {
                   onDrop={onDrop}
                   onDragOver={onDragOver}
                   onSelectionChange={onSelectionChange}
+                  onNodeDoubleClick={(_, node) => {
+                    if (node.type === 'ifCondition') {
+                      setIsIfElseModalOpen(true);
+                    }
+                  }}
                   nodeTypes={customNodeTypes}
                   fitView
                   deleteKeyCode={['Backspace', 'Delete']}
@@ -972,6 +1019,25 @@ function WorkflowCanvas() {
                         placeholder="Export schema here or paste to import..."
                         spellCheck={false}
                       />
+                    </div>
+                    {/* Import / Export quick actions */}
+                    <div className="schema-sidebar-actions">
+                      <button
+                        type="button"
+                        className="schema-sidebar-action-btn schema-action-export"
+                        onClick={() => { exportSchema(); }}
+                        title="Generate schema from canvas"
+                      >
+                        <FileJson size={13} /> Export Schema
+                      </button>
+                      <button
+                        type="button"
+                        className="schema-sidebar-action-btn schema-action-import"
+                        onClick={() => { handleImportSchemaClick(); }}
+                        title="Load canvas from schema JSON"
+                      >
+                        <Upload size={13} /> Import Schema
+                      </button>
                     </div>
                   </div>
                 </>
