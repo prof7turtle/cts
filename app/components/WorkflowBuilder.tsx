@@ -5,7 +5,52 @@ import { createPortal } from 'react-dom';
 import {
   Maximize2, Trash2, Play, Pause, Square, RotateCcw, Settings2,
   Download, Upload, FileJson, TerminalSquare, Bot, Eraser, MessageSquare, X, Copy, Check, Save,
+  BookOpen, ChevronDown, ChevronUp, Search,
 } from 'lucide-react';
+
+// ─── Predefined Request Library ─────────────────────────────────
+const REQUEST_LIBRARY: { category: string; requests: string[] }[] = [
+  {
+    category: 'Quote',
+    requests: [
+      '/Quote/Summary',
+      '/Quote/Detail',
+      '/Quote/Validate',
+      '/Quote/Submit',
+      '/Quote/Bind',
+      '/Quote/Rate',
+    ],
+  },
+  {
+    category: 'Policy',
+    requests: [
+      '/Policy/Issue',
+      '/Policy/Renew',
+      '/Policy/Cancel',
+      '/Policy/Endorse',
+      '/Policy/Reinstate',
+    ],
+  },
+  {
+    category: 'Claim',
+    requests: [
+      '/Claim/FNOL',
+      '/Claim/Status',
+      '/Claim/Reserve',
+      '/Claim/Payment',
+      '/Claim/Close',
+    ],
+  },
+  {
+    category: 'Account',
+    requests: [
+      '/Account/Create',
+      '/Account/Update',
+      '/Account/Search',
+      '/Account/Delete',
+    ],
+  },
+];
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -74,6 +119,8 @@ function WorkflowCanvas() {
   const [chatSidebarWidth, setChatSidebarWidth] = useState(320);
   const [isSchemaCopied, setIsSchemaCopied] = useState(false);
   const [isIfElseModalOpen, setIsIfElseModalOpen] = useState(false);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [librarySearch, setLibrarySearch] = useState('');
 
   const handleCopySchema = useCallback(() => {
     navigator.clipboard.writeText(serializedSchema).then(() => {
@@ -1050,7 +1097,7 @@ function WorkflowCanvas() {
                     <span>Workflow Config</span>
                   </div>
                   <div className="start-node-config-fields sidebar-fields">
-                    <label className="start-node-config-field start-node-config-field-stacked">
+                    <label className="start-node-config-field start-node-config-field-stacked" style={{ flex: 'none' }}>
                       <span className="start-node-config-label">Request Name</span>
                       <input
                         className="toolbar-input start-node-config-input"
@@ -1061,6 +1108,186 @@ function WorkflowCanvas() {
                         style={{ minWidth: '100%', width: '100%' }}
                       />
                     </label>
+
+                    {/* ── Request Library ──────────────────────────── */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                      <button
+                        type="button"
+                        onClick={() => { setIsLibraryOpen((p) => !p); setLibrarySearch(''); }}
+                        aria-expanded={isLibraryOpen}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          height: 30,
+                          padding: '0 10px',
+                          border: isLibraryOpen ? '1px solid #4f46e5' : '1px solid rgba(99,102,241,0.35)',
+                          borderRadius: 20,
+                          background: isLibraryOpen ? '#6366f1' : 'rgba(238,242,255,0.7)',
+                          color: isLibraryOpen ? '#fff' : '#4338ca',
+                          fontSize: 11.5,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          letterSpacing: '0.01em',
+                          alignSelf: 'flex-start',
+                          width: 'auto',
+                          minWidth: 0,
+                          boxShadow: isLibraryOpen ? '0 2px 8px rgba(99,102,241,0.35)' : 'none',
+                          transition: 'all 0.18s ease',
+                          fontFamily: 'inherit',
+                        }}
+                      >
+                        <BookOpen size={12} />
+                        <span>Request Library</span>
+                        {isLibraryOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                      </button>
+
+                      {isLibraryOpen && (
+                        <div style={{
+                          marginTop: 8,
+                          background: '#fff',
+                          border: '1px solid #c7d2fe',
+                          borderRadius: 10,
+                          boxShadow: '0 4px 16px rgba(99,102,241,0.12)',
+                          overflow: 'hidden',
+                          animation: 'libraryFadeIn 0.15s ease',
+                        }}>
+                          {/* Search row */}
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '0 10px',
+                            borderBottom: '1px solid #e0e7ff',
+                            background: '#f5f7ff',
+                          }}>
+                            <Search size={11} style={{ color: '#a5b4fc', flexShrink: 0 }} />
+                            <input
+                              placeholder="Search requests…"
+                              value={librarySearch}
+                              onChange={(e) => setLibrarySearch(e.target.value)}
+                              autoFocus
+                              style={{
+                                flex: 1,
+                                border: 'none',
+                                background: 'transparent',
+                                outline: 'none',
+                                boxShadow: 'none',
+                                height: 34,
+                                fontSize: 12,
+                                color: '#1e1b4b',
+                                padding: '0 4px',
+                                fontFamily: 'inherit',
+                              }}
+                            />
+                            {librarySearch && (
+                              <button
+                                type="button"
+                                onClick={() => setLibrarySearch('')}
+                                aria-label="Clear search"
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  width: 18,
+                                  height: 18,
+                                  padding: 0,
+                                  border: 'none',
+                                  borderRadius: '50%',
+                                  background: '#e0e7ff',
+                                  color: '#6366f1',
+                                  cursor: 'pointer',
+                                  flexShrink: 0,
+                                  fontFamily: 'inherit',
+                                }}
+                              >
+                                <X size={10} />
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Results list */}
+                          <div style={{
+                            maxHeight: 200,
+                            overflowY: 'auto',
+                            padding: 8,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 10,
+                          }}>
+                            {REQUEST_LIBRARY.map((cat) => {
+                              const filtered = cat.requests.filter((r) =>
+                                r.toLowerCase().includes(librarySearch.toLowerCase())
+                              );
+                              if (filtered.length === 0) return null;
+                              return (
+                                <div key={cat.category}>
+                                  {!librarySearch && (
+                                    <span style={{
+                                      display: 'block',
+                                      fontSize: 10,
+                                      fontWeight: 700,
+                                      color: '#6366f1',
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '0.7px',
+                                      marginBottom: 5,
+                                    }}>{cat.category}</span>
+                                  )}
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                                    {filtered.map((req) => {
+                                      const isActive = selectedData.requestName === req;
+                                      return (
+                                        <button
+                                          key={req}
+                                          type="button"
+                                          onClick={() => {
+                                            updateWorkflowConfig('requestName', req);
+                                            setIsLibraryOpen(false);
+                                            setLibrarySearch('');
+                                          }}
+                                          title={req}
+                                          style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            height: 'auto',
+                                            padding: '4px 9px',
+                                            border: isActive ? '1px solid #4f46e5' : '1px solid #c7d2fe',
+                                            borderRadius: 20,
+                                            background: isActive ? '#6366f1' : '#f0f4ff',
+                                            color: isActive ? '#fff' : '#3730a3',
+                                            fontSize: 11,
+                                            fontWeight: 500,
+                                            cursor: 'pointer',
+                                            whiteSpace: 'nowrap',
+                                            fontFamily: "'Fira Code', Consolas, Monaco, monospace",
+                                            letterSpacing: 0,
+                                            minWidth: 0,
+                                            width: 'auto',
+                                            boxShadow: isActive ? '0 2px 6px rgba(99,102,241,0.3)' : 'none',
+                                            transition: 'all 0.15s ease',
+                                          }}
+                                        >
+                                          {req}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            {REQUEST_LIBRARY.every((cat) =>
+                              cat.requests.every(
+                                (r) => !r.toLowerCase().includes(librarySearch.toLowerCase())
+                              )
+                            ) && (
+                              <p style={{ fontSize: 11.5, color: '#94a3b8', textAlign: 'center', padding: '12px 0 4px', fontStyle: 'italic' }}>
+                                No matches for &ldquo;{librarySearch}&rdquo;
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
                     <div className="start-node-config-toggles sidebar-toggles">
                       <label className="start-node-config-toggle">
