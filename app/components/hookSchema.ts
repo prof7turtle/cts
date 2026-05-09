@@ -559,7 +559,7 @@ function buildWorkflowColumn(
     parentId: groupId,
     extent: 'parent' as const,
     draggable: true,
-    selectable: false,
+    selectable: true,
     connectable: false,
   } as Node);
 
@@ -783,14 +783,7 @@ export function hookSchemaToCanvas(config: HookConfig): {
   const groups = groupHooksByRequestName(config);
 
   if (groups.length === 0) {
-    const defaultGroup: RequestNameGroup = {
-      requestName: '/Quote/Summary',
-      needCascading: true,
-      staticParams: {},
-      preActions: [],
-      postActions: [],
-    };
-    return buildWorkflowColumn(defaultGroup, 0, 0, 420, { value: 1 }, { value: 1 });
+    return { nodes: [], edges: [] };
   }
 
   const COLUMN_WIDTH = 420;

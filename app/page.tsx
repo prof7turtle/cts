@@ -1,31 +1,26 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import WorkflowBuilder from './components/WorkflowBuilder';
 import WorkflowList from './components/WorkflowList';
 
 export default function HomePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [view, setViewState] = useState<'list' | 'builder'>('list');
 
+  // Sync view state whenever URL search params change (covers both router.push and popstate)
   useEffect(() => {
-    const syncViewFromUrl = () => {
-      const params = new URLSearchParams(window.location.search);
-      setViewState(params.get('view') === 'builder' ? 'builder' : 'list');
-    };
-    syncViewFromUrl();
-    window.addEventListener('popstate', syncViewFromUrl);
-    return () => window.removeEventListener('popstate', syncViewFromUrl);
-  }, []);
+    setViewState(searchParams.get('view') === 'builder' ? 'builder' : 'list');
+  }, [searchParams]);
 
   const setView = (nextView: 'list' | 'builder') => {
     const params = new URLSearchParams(window.location.search);
     if (nextView === 'builder') { params.set('view', 'builder'); }
     else { params.delete('view'); }
     const query = params.toString();
-    setViewState(nextView);
-    router.replace(query ? `/?${query}` : '/', { scroll: false });
+    router.push(query ? `/?${query}` : '/', { scroll: false });
   };
 
   return (
