@@ -413,6 +413,35 @@ html, body {
   color: #78350f !important;
 }
 
+.toolbar-save-btn {
+  background: #10b981 !important;
+  color: #ffffff !important;
+  border-color: #059669 !important;
+}
+
+.toolbar-save-btn:hover {
+  background: #059669 !important;
+  border-color: #047857 !important;
+}
+
+.toolbar-save-btn:disabled {
+  background: #d1d5db !important;
+  border-color: #d1d5db !important;
+  cursor: not-allowed !important;
+}
+
+.toolbar-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #64748b;
+  padding: 4px 8px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
 /* ── Start Node Config Panel ──────────────────────────────── */
 
 .start-node-config-sidebar {

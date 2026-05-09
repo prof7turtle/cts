@@ -1,0 +1,310 @@
+{
+  "id": "wf_1778324643052_wgqmbhkly",
+  "name": "Rater demo",
+  "clientCode": "COGITATE",
+  "nodes": [
+    {
+      "id": "group-0",
+      "type": "group",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "data": {},
+      "style": {
+        "width": 420,
+        "height": 670,
+        "background": "transparent",
+        "border": "none",
+        "pointerEvents": "none"
+      },
+      "draggable": false,
+      "selectable": false,
+      "connectable": false,
+      "measured": {
+        "width": 420,
+        "height": 670
+      }
+    },
+    {
+      "id": "label-0",
+      "type": "requestNameLabel",
+      "position": {
+        "x": 80,
+        "y": 10
+      },
+      "data": {
+        "label": "Request Name:\n/Quote/Summary",
+        "requestName": "/Quote/Summary",
+        "workflowGroupId": "group-0"
+      },
+      "parentId": "group-0",
+      "extent": "parent",
+      "draggable": true,
+      "selectable": false,
+      "connectable": false,
+      "measured": {
+        "width": 260,
+        "height": 74
+      }
+    },
+    {
+      "id": "start-0",
+      "type": "start",
+      "position": {
+        "x": 115,
+        "y": 80
+      },
+      "data": {
+        "label": "Start",
+        "workflowGroupId": "group-0",
+        "requestName": "/Quote/Summary",
+        "needCascading": true,
+        "hookCallCascading": true,
+        "staticParams": {}
+      },
+      "parentId": "group-0",
+      "extent": "parent",
+      "measured": {
+        "width": 190,
+        "height": 47
+      },
+      "selected": true
+    },
+    {
+      "id": "n-1",
+      "type": "generateQuoteNumber",
+      "position": {
+        "x": 115,
+        "y": 210
+      },
+      "parentId": "group-0",
+      "extent": "parent",
+      "data": {
+        "label": "Generate Quote Number",
+        "moduleName": "@cogitate/core-pos-components",
+        "callFunction": true,
+        "isEndpoint": false,
+        "path": "",
+        "condition": "",
+        "requestName": "/Quote/Summary"
+      },
+      "measured": {
+        "width": 208,
+        "height": 47
+      }
+    },
+    {
+      "id": "n-2",
+      "type": "copyDocuments",
+      "position": {
+        "x": 115,
+        "y": 340
+      },
+      "parentId": "group-0",
+      "extent": "parent",
+      "data": {
+        "label": "Copy Documents",
+        "moduleName": "@cogitate/core-pos-components",
+        "callFunction": true,
+        "isEndpoint": false,
+        "path": "",
+        "condition": "",
+        "requestName": "/Quote/Summary"
+      },
+      "measured": {
+        "width": 190,
+        "height": 47
+      }
+    },
+    {
+      "id": "end-0",
+      "type": "end",
+      "position": {
+        "x": 115,
+        "y": 470
+      },
+      "parentId": "group-0",
+      "extent": "parent",
+      "data": {
+        "label": "End",
+        "requestName": "/Quote/Summary"
+      },
+      "measured": {
+        "width": 190,
+        "height": 47
+      }
+    },
+    {
+      "id": "group-1",
+      "type": "group",
+      "position": {
+        "x": 480,
+        "y": 0
+      },
+      "data": {},
+      "style": {
+        "width": 420,
+        "height": 670,
+        "background": "transparent",
+        "border": "none",
+        "pointerEvents": "none"
+      },
+      "draggable": false,
+      "selectable": false,
+      "connectable": false,
+      "measured": {
+        "width": 420,
+        "height": 670
+      }
+    },
+    {
+      "id": "label-1",
+      "type": "requestNameLabel",
+      "position": {
+        "x": 80,
+        "y": 10
+      },
+      "data": {
+        "label": "Request Name:\n/Policy/Issue",
+        "requestName": "/Policy/Issue",
+        "workflowGroupId": "group-1"
+      },
+      "parentId": "group-1",
+      "extent": "parent",
+      "draggable": true,
+      "selectable": false,
+      "connectable": false,
+      "measured": {
+        "width": 260,
+        "height": 74
+      }
+    },
+    {
+      "id": "start-1",
+      "type": "start",
+      "position": {
+        "x": 115,
+        "y": 80
+      },
+      "data": {
+        "label": "Start",
+        "workflowGroupId": "group-1",
+        "requestName": "/Policy/Issue",
+        "needCascading": true,
+        "staticParams": {}
+      },
+      "parentId": "group-1",
+      "extent": "parent",
+      "measured": {
+        "width": 190,
+        "height": 47
+      },
+      "selected": false
+    },
+    {
+      "id": "n-3",
+      "type": "getGeoCodeAddress",
+      "position": {
+        "x": 115,
+        "y": 210
+      },
+      "parentId": "group-1",
+      "extent": "parent",
+      "data": {
+        "label": "Geocode Address",
+        "moduleName": "@cogitate/core-pos-components",
+        "callFunction": true,
+        "isEndpoint": false,
+        "path": "",
+        "condition": "",
+        "requestName": "/Policy/Issue"
+      },
+      "measured": {
+        "width": 190,
+        "height": 47
+      }
+    },
+    {
+      "id": "n-4",
+      "type": "invokeAdaptiveAPI",
+      "position": {
+        "x": 115,
+        "y": 340
+      },
+      "parentId": "group-1",
+      "extent": "parent",
+      "data": {
+        "label": "Invoke Adaptive API",
+        "moduleName": "@cogitate/core-pos-components",
+        "callFunction": true,
+        "isEndpoint": true,
+        "path": "",
+        "condition": "",
+        "requestName": "/Policy/Issue"
+      },
+      "measured": {
+        "width": 190,
+        "height": 47
+      }
+    },
+    {
+      "id": "end-1",
+      "type": "end",
+      "position": {
+        "x": 115,
+        "y": 470
+      },
+      "parentId": "group-1",
+      "extent": "parent",
+      "data": {
+        "label": "End",
+        "requestName": "/Policy/Issue"
+      },
+      "measured": {
+        "width": 190,
+        "height": 47
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-1",
+      "source": "start-0",
+      "target": "n-1",
+      "type": "smoothstep"
+    },
+    {
+      "id": "e-2",
+      "source": "n-1",
+      "target": "n-2",
+      "type": "smoothstep"
+    },
+    {
+      "id": "e-3",
+      "source": "n-2",
+      "target": "end-0",
+      "type": "smoothstep"
+    },
+    {
+      "id": "e-4",
+      "source": "start-1",
+      "target": "n-3",
+      "type": "smoothstep"
+    },
+    {
+      "id": "e-5",
+      "source": "n-3",
+      "target": "n-4",
+      "type": "smoothstep"
+    },
+    {
+      "id": "e-6",
+      "source": "n-4",
+      "target": "end-1",
+      "type": "smoothstep"
+    }
+  ],
+  "createdAt": "2026-05-09T11:08:34.494Z",
+  "updatedAt": "2026-05-09T11:11:33.891Z"
+}
