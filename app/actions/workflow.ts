@@ -487,3 +487,154 @@ export async function deleteEdge(id: string, workflowId: string) {
 
   return data.data.deleteEdge;
 }
+
+// ============ Schema Persistence (File-based) ============
+
+function getBaseUrl(): string {
+  const explicitUrl = process.env.WORKFLOW_API_URL;
+  const vercelUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : null;
+  return explicitUrl || vercelUrl || 'http://localhost:3000';
+}
+
+export async function saveWorkflowSchema(
+  id: string,
+  name: string,
+  clientCode: string,
+  nodes: any[],
+  edges: any[]
+) {
+  try {
+    const baseUrl = getBaseUrl();
+    const response = await fetch(`${baseUrl}/api/workflow-schema`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id,
+        name,
+        clientCode,
+        nodes,
+        edges,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to save schema');
+    }
+
+    const result = await response.json();
+    return result;
+  } catch (error: any) {
+    throw new Error(error.message || 'Failed to save workflow schema');
+  }
+}
+
+export async function loadWorkflowSchema(id: string) {
+  try {
+    const baseUrl = getBaseUrl();
+    const response = await fetch(`${baseUrl}/api/workflow-schema?id=${encodeURIComponent(id)}`, {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return null;
+      }
+      throw new Error('Failed to load schema');
+    }
+
+    const result = await response.json();
+    return result.schema;
+  } catch (error: any) {
+    console.error('Failed to load workflow schema:', error);
+    throw new Error(error.message || 'Failed to load workflow schema');
+  }
+}
+
+export async function deleteWorkflowSchema(id: string) {
+  try {
+    const baseUrl = getBaseUrl();
+    const response = await fetch(`${baseUrl}/api/workflow-schema?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to delete schema');
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    throw new Error(error.message || 'Failed to delete workflow schema');
+  }
+}
+
+// ============ Workflow Management (REST API - File-based) ============
+
+export async function fetchWorkflowsList() {
+  try {
+    const baseUrl = getBaseUrl();
+    const response = await fetch(`${baseUrl}/api/workflows`, {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch workflows');
+    }
+
+    const result = await response.json();
+    return {
+      workflows: result.workflows || [],
+      total: result.total || 0,
+      success: true,
+    };
+  } catch (error: any) {
+    console.error('Failed to fetch workflows:', error);
+    throw new Error(error.message || 'Failed to fetch workflows');
+  }
+}
+
+export async function createWorkflowFile(name: string, description?: string) {
+  try {
+    const baseUrl = getBaseUrl();
+    const response = await fetch(`${baseUrl}/api/workflows`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        description: description || '',
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to create workflow');
+    }
+
+    const result = await response.json();
+    return {
+      success: result.success,
+      workflow: result.workflow,
+    };
+  } catch (error: any) {
+    console.error('Failed to create workflow:', error);
+    throw new Error(error.message || 'Failed to create workflow');
+  }
+}
+
+export async function deleteWorkflowFile(id: string) {
+  try {
+    const baseUrl = getBaseUrl();
+    const response = await fetch(`${baseUrl}/api/workflows?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to delete workflow');
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    console.error('Failed to delete workflow:', error);
+    throw new Error(error.message || 'Failed to delete workflow');
+  }
+}

@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useSearchParams } from 'next/navigation';
 import {
   Maximize2, Trash2, Play, Pause, Square, RotateCcw, Settings2,
   Download, Upload, FileJson, TerminalSquare, Bot, Eraser, MessageSquare, X, Copy, Check, Save,
   BookOpen, ChevronDown, ChevronUp, Search,
 } from 'lucide-react';
+import { loadSchema, saveSchema, generateWorkflowId, type WorkflowSaveData } from '@/lib/workflowSchemaUtils';
 
 // ─── Predefined Request Library ─────────────────────────────────
 const REQUEST_LIBRARY: { category: string; requests: string[] }[] = [
@@ -104,6 +106,7 @@ const getEdgeId = () => `edge-${++edgeId}`;
 function WorkflowCanvas() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const toolbarMenuRef = useRef<HTMLDivElement>(null);
+  const searchParams = useSearchParams();
   const [nodes, setNodes] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -121,6 +124,13 @@ function WorkflowCanvas() {
   const [isIfElseModalOpen, setIsIfElseModalOpen] = useState(false);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [librarySearch, setLibrarySearch] = useState('');
+
+  // ─── Persistence state ─────────────────────────────────
+  const [workflowId, setWorkflowId] = useState<string | null>(null);
+  const [workflowName, setWorkflowName] = useState('Untitled Workflow');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
 
   const handleCopySchema = useCallback(() => {
     navigator.clipboard.writeText(serializedSchema).then(() => {
@@ -188,6 +198,75 @@ function WorkflowCanvas() {
       window.removeEventListener('keydown', handleEscape);
     };
   }, [isToolbarMenuOpen]);
+
+  // ─── Load workflow from URL on mount ─────────────────────────
+  useEffect(() => {
+    const loadWorkflowFromUrl = async () => {
+      const id = searchParams.get('workflowId');
+      
+      if (!id) {
+        // No workflow ID, create a new one
+        const newId = generateWorkflowId();
+        setWorkflowId(newId);
+        setIsLoading(false);
+        return;
+      }
+
+      setWorkflowId(id);
+      
+      // Try to load the workflow
+      const schema = await loadSchema(id);
+      if (schema) {
+        // Restore workflow from saved nodes/edges
+        setNodes(schema.nodes);
+        setEdges(schema.edges);
+        setClientCode(schema.clientCode);
+        setWorkflowName(schema.name);
+        setLastSavedAt(new Date().toLocaleTimeString());
+        setMessage(`Loaded workflow: ${schema.name}`);
+      }
+      setIsLoading(false);
+    };
+
+    loadWorkflowFromUrl();
+  }, [searchParams, setNodes, setEdges]);
+
+  // ─── Auto-save workflow when nodes/edges change ────────────────
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (isLoading || !workflowId || isExecuting) return;
+
+    // Clear existing timeout
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    // Set new timeout for auto-save (3 seconds after changes stop)
+    autoSaveTimeoutRef.current = setTimeout(async () => {
+      if (!workflowId) return;
+      
+      setIsSaving(true);
+      const success = await saveSchema({
+        id: workflowId,
+        name: workflowName,
+        clientCode,
+        nodes,
+        edges,
+      });
+
+      if (success) {
+        setLastSavedAt(new Date().toLocaleTimeString());
+      }
+      setIsSaving(false);
+    }, 3000);
+
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [nodes, edges, clientCode, workflowName, workflowId, isLoading, isExecuting]);
 
   // Inject execution status into node data for visual highlighting
   const displayNodes = useMemo(() => {
@@ -660,6 +739,28 @@ function WorkflowCanvas() {
     engine.pause();
   }, [engine]);
 
+  // ─── Manual save handler ───────────────────────────────────────
+  const handleManualSave = useCallback(async () => {
+    if (!workflowId) return;
+    
+    setIsSaving(true);
+    const success = await saveSchema({
+      id: workflowId,
+      name: workflowName,
+      clientCode,
+      nodes,
+      edges,
+    });
+
+    if (success) {
+      setLastSavedAt(new Date().toLocaleTimeString());
+      setMessage(`Workflow saved: ${workflowName}`);
+    } else {
+      setMessage('Failed to save workflow');
+    }
+    setIsSaving(false);
+  }, [workflowId, workflowName, clientCode, nodes, edges]);
+
   const handleResume = useCallback(() => {
     engine.resume();
   }, [engine]);
@@ -746,6 +847,31 @@ function WorkflowCanvas() {
       <div className="builder-main">
         <div className="builder-toolbar">
           <div className="builder-toolbar-left">
+            <label>
+              Workflow Name
+              <input
+                value={workflowName}
+                onChange={(event) => setWorkflowName(event.target.value)}
+                className="toolbar-input"
+                placeholder="e.g., HO3 Rating Hook"
+                disabled={isLoading}
+              />
+            </label>
+            <button 
+              type="button" 
+              onClick={handleManualSave} 
+              disabled={isSaving || isLoading}
+              title="Save workflow" 
+              className="toolbar-save-btn"
+            >
+              <Save size={13} /> {isSaving ? 'Saving...' : 'Save'}
+            </button>
+            {lastSavedAt && (
+              <span className="toolbar-meta" title={`Last saved at ${lastSavedAt}`}>
+                Saved {lastSavedAt}
+              </span>
+            )}
+
             <label>
               Client Code
               <input

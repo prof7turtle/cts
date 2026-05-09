@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import * as workflowActions from '@/app/actions/workflow';
+import { useRouter } from 'next/navigation';
+import * as workflowActions from '@/lib/workflowApi';
 
 interface WorkflowListItem {
   id: string;
@@ -117,12 +118,14 @@ function WorkflowCard({
   onArchive,
   onDuplicate,
   onDelete,
+  onOpen,
 }: {
   workflow: WorkflowListItem;
   onPublish: (id: string) => void;
   onArchive: (id: string) => void;
   onDuplicate: (id: string) => void;
   onDelete: (id: string) => void;
+  onOpen: (id: string) => void;
 }) {
   const updated = new Date(workflow.updatedAt).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
@@ -147,6 +150,14 @@ function WorkflowCard({
       </div>
 
       <div className="wl-card-actions">
+        <button
+          type="button"
+          className="wl-action-btn wl-action-edit"
+          onClick={() => onOpen(workflow.id)}
+          title="Open workflow in builder"
+        >
+          Edit
+        </button>
         {workflow.status === 'DRAFT' && (
           <button
             type="button"
@@ -211,6 +222,7 @@ function SkeletonCard() {
 
 // ── Main Component ────────────────────────────────────────────────
 export default function WorkflowList() {
+  const router = useRouter();
   const [workflows, setWorkflows] = useState<WorkflowListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -227,8 +239,8 @@ export default function WorkflowList() {
     try {
       setLoading(true);
       setError(null);
-      const result = await workflowActions.fetchWorkflows(1, 50);
-      setWorkflows(result.workflows);
+      const result = await workflowActions.fetchWorkflowsList();
+      setWorkflows(result.workflows || []);
     } catch (err: any) {
       setError(err.message || 'Failed to load workflows');
     } finally {
@@ -238,18 +250,22 @@ export default function WorkflowList() {
 
   const loadStats = async () => {
     try {
-      const s = await workflowActions.fetchWorkflowStats();
-      setStats(s);
+      // Stats are optional in the file-based system
+      // We could calculate them from loaded workflows if needed
     } catch { /* silent */ }
   };
 
   const handleCreate = useCallback(async (name: string, description: string) => {
-    const result = await workflowActions.createWorkflow(name, description || 'New workflow created from GraphQL', 'Insurance');
+    const result = await workflowActions.createWorkflowFile(name, description || 'New workflow');
     if (result.success && result.workflow) {
       setWorkflows(prev => [result.workflow as any, ...prev]);
       loadStats();
     }
   }, []);
+
+  const handleOpen = useCallback((id: string) => {
+    router.push(`/?view=builder&workflowId=${encodeURIComponent(id)}`);
+  }, [router]);
 
   const handlePublish = async (id: string) => {
     setActionError(null);
@@ -290,7 +306,7 @@ export default function WorkflowList() {
     if (!confirm('Delete this workflow? This action cannot be undone.')) return;
     setActionError(null);
     try {
-      const result = await workflowActions.deleteWorkflow(id);
+      const result = await workflowActions.deleteWorkflowFile(id);
       if (result.success) {
         setWorkflows(prev => prev.filter(w => w.id !== id));
         loadStats();
@@ -359,6 +375,7 @@ export default function WorkflowList() {
                 onArchive={handleArchive}
                 onDuplicate={handleDuplicate}
                 onDelete={handleDelete}
+                onOpen={handleOpen}
               />
             ))}
           </div>
