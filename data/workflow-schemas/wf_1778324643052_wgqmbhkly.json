@@ -13,7 +13,7 @@
       "data": {},
       "style": {
         "width": 420,
-        "height": 670,
+        "height": 540,
         "background": "transparent",
         "border": "none",
         "pointerEvents": "none"
@@ -23,7 +23,7 @@
       "connectable": false,
       "measured": {
         "width": 420,
-        "height": 670
+        "height": 540
       }
     },
     {
@@ -34,19 +34,20 @@
         "y": 10
       },
       "data": {
-        "label": "Request Name:\n/Quote/Summary",
-        "requestName": "/Quote/Summary",
+        "label": "Request Name:\nUnderwriterGenerateQuoteNumber",
+        "requestName": "UnderwriterGenerateQuoteNumber",
         "workflowGroupId": "group-0"
       },
       "parentId": "group-0",
       "extent": "parent",
       "draggable": true,
-      "selectable": false,
+      "selectable": true,
       "connectable": false,
       "measured": {
-        "width": 260,
+        "width": 289,
         "height": 74
-      }
+      },
+      "selected": false
     },
     {
       "id": "start-0",
@@ -58,9 +59,8 @@
       "data": {
         "label": "Start",
         "workflowGroupId": "group-0",
-        "requestName": "/Quote/Summary",
-        "needCascading": true,
-        "hookCallCascading": true,
+        "requestName": "UnderwriterGenerateQuoteNumber",
+        "needCascading": false,
         "staticParams": {}
       },
       "parentId": "group-0",
@@ -69,7 +69,7 @@
         "width": 190,
         "height": 47
       },
-      "selected": true
+      "selected": false
     },
     {
       "id": "n-1",
@@ -86,34 +86,13 @@
         "callFunction": true,
         "isEndpoint": false,
         "path": "",
-        "condition": "",
-        "requestName": "/Quote/Summary"
+        "condition": {
+          "expression": "true"
+        },
+        "requestName": "UnderwriterGenerateQuoteNumber"
       },
       "measured": {
         "width": 208,
-        "height": 47
-      }
-    },
-    {
-      "id": "n-2",
-      "type": "copyDocuments",
-      "position": {
-        "x": 115,
-        "y": 340
-      },
-      "parentId": "group-0",
-      "extent": "parent",
-      "data": {
-        "label": "Copy Documents",
-        "moduleName": "@cogitate/core-pos-components",
-        "callFunction": true,
-        "isEndpoint": false,
-        "path": "",
-        "condition": "",
-        "requestName": "/Quote/Summary"
-      },
-      "measured": {
-        "width": 190,
         "height": 47
       }
     },
@@ -122,13 +101,12 @@
       "type": "end",
       "position": {
         "x": 115,
-        "y": 470
+        "y": 340
       },
       "parentId": "group-0",
       "extent": "parent",
       "data": {
-        "label": "End",
-        "requestName": "/Quote/Summary"
+        "label": "End"
       },
       "measured": {
         "width": 190,
@@ -139,13 +117,13 @@
       "id": "group-1",
       "type": "group",
       "position": {
-        "x": 480,
-        "y": 0
+        "x": 389.433962264151,
+        "y": -13.20754716981132
       },
       "data": {},
       "style": {
         "width": 420,
-        "height": 670,
+        "height": 800,
         "background": "transparent",
         "border": "none",
         "pointerEvents": "none"
@@ -155,8 +133,9 @@
       "connectable": false,
       "measured": {
         "width": 420,
-        "height": 670
-      }
+        "height": 800
+      },
+      "dragging": true
     },
     {
       "id": "label-1",
@@ -166,19 +145,20 @@
         "y": 10
       },
       "data": {
-        "label": "Request Name:\n/Policy/Issue",
-        "requestName": "/Policy/Issue",
+        "label": "Request Name:\n/Quote/Detail",
+        "requestName": "/Quote/Detail",
         "workflowGroupId": "group-1"
       },
       "parentId": "group-1",
       "extent": "parent",
       "draggable": true,
-      "selectable": false,
+      "selectable": true,
       "connectable": false,
       "measured": {
         "width": 260,
         "height": 74
-      }
+      },
+      "selected": true
     },
     {
       "id": "start-1",
@@ -190,8 +170,8 @@
       "data": {
         "label": "Start",
         "workflowGroupId": "group-1",
-        "requestName": "/Policy/Issue",
-        "needCascading": true,
+        "requestName": "/Quote/Detail",
+        "needCascading": false,
         "staticParams": {}
       },
       "parentId": "group-1",
@@ -203,8 +183,8 @@
       "selected": false
     },
     {
-      "id": "n-3",
-      "type": "getGeoCodeAddress",
+      "id": "n-2",
+      "type": "generateFormsDraft",
       "position": {
         "x": 115,
         "y": 210
@@ -212,13 +192,40 @@
       "parentId": "group-1",
       "extent": "parent",
       "data": {
-        "label": "Geocode Address",
+        "label": "Generate Forms Draft",
         "moduleName": "@cogitate/core-pos-components",
         "callFunction": true,
         "isEndpoint": false,
         "path": "",
-        "condition": "",
-        "requestName": "/Policy/Issue"
+        "condition": {
+          "expression": "true"
+        },
+        "requestName": "/Quote/Detail"
+      },
+      "measured": {
+        "width": 190,
+        "height": 47
+      }
+    },
+    {
+      "id": "n-3",
+      "type": "getEmailTemplateBody",
+      "position": {
+        "x": 115,
+        "y": 340
+      },
+      "parentId": "group-1",
+      "extent": "parent",
+      "data": {
+        "label": "Get Email Template",
+        "moduleName": "@cogitate/core-pos-components",
+        "callFunction": true,
+        "isEndpoint": false,
+        "path": "",
+        "condition": {
+          "expression": "true"
+        },
+        "requestName": "/Quote/Detail"
       },
       "measured": {
         "width": 190,
@@ -227,21 +234,23 @@
     },
     {
       "id": "n-4",
-      "type": "invokeAdaptiveAPI",
+      "type": "publishEvent",
       "position": {
         "x": 115,
-        "y": 340
+        "y": 470
       },
       "parentId": "group-1",
       "extent": "parent",
       "data": {
-        "label": "Invoke Adaptive API",
+        "label": "Publish Event",
         "moduleName": "@cogitate/core-pos-components",
         "callFunction": true,
-        "isEndpoint": true,
+        "isEndpoint": false,
         "path": "",
-        "condition": "",
-        "requestName": "/Policy/Issue"
+        "condition": {
+          "expression": "true"
+        },
+        "requestName": "/Quote/Detail"
       },
       "measured": {
         "width": 190,
@@ -253,13 +262,13 @@
       "type": "end",
       "position": {
         "x": 115,
-        "y": 470
+        "y": 600
       },
       "parentId": "group-1",
       "extent": "parent",
       "data": {
         "label": "End",
-        "requestName": "/Policy/Issue"
+        "requestName": "/Quote/Detail"
       },
       "measured": {
         "width": 190,
@@ -277,18 +286,18 @@
     {
       "id": "e-2",
       "source": "n-1",
-      "target": "n-2",
-      "type": "smoothstep"
-    },
-    {
-      "id": "e-3",
-      "source": "n-2",
       "target": "end-0",
       "type": "smoothstep"
     },
     {
-      "id": "e-4",
+      "id": "e-3",
       "source": "start-1",
+      "target": "n-2",
+      "type": "smoothstep"
+    },
+    {
+      "id": "e-4",
+      "source": "n-2",
       "target": "n-3",
       "type": "smoothstep"
     },
@@ -306,5 +315,5 @@
     }
   ],
   "createdAt": "2026-05-09T11:08:34.494Z",
-  "updatedAt": "2026-05-09T11:11:33.891Z"
+  "updatedAt": "2026-05-09T19:26:40.055Z"
 }

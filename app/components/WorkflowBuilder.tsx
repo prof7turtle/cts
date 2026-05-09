@@ -86,22 +86,12 @@ import { useExecutionEngine } from './useExecutionEngine';
 import WorkflowChatPanel from './chat/WorkflowChatPanel';
 import type { CustomHook } from './customHooksStore';
 
-const initialNodes: Node[] = [
-  {
-    id: 'start-1',
-    type: 'start',
-    position: { x: 320, y: 80 },
-    data: { label: 'Start' },
-  },
-];
+const initialNodes: Node[] = [];
 
 const initialEdges: Edge[] = [];
 
-let nodeId = 0;
-let edgeId = 0;
-
-const getNodeId = () => `node-${++nodeId}`;
-const getEdgeId = () => `edge-${++edgeId}`;
+const getNodeId = () => `node-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+const getEdgeId = () => `edge-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
 function WorkflowCanvas() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -361,19 +351,15 @@ function WorkflowCanvas() {
       event.preventDefault();
 
       const type = event.dataTransfer.getData('application/reactflow');
-      if (!type) {
-        return;
-      }
+      if (!type) return;
 
       const position = screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,
       });
 
-      let node: Node;
-
       if (type.startsWith('customHook-')) {
-        // Handle custom hook
+        // ── Custom hook node ──────────────────────────────────
         const payload = event.dataTransfer.getData('application/custom-hook');
         if (!payload) return;
 
@@ -383,33 +369,73 @@ function WorkflowCanvas() {
         } catch {
           return;
         }
-
         if (!hookData) return;
 
-        node = {
-          id: getNodeId(),
-          type: 'customHook',
-          position,
-          data: {
-            label: hookData.hookName,
+        setNodes((currentNodes) => {
+          const newId = getNodeId();
+          const groupUnderDrop = currentNodes.find(
+            (n) =>
+              n.type === 'group' &&
+              position.x >= n.position.x &&
+              position.x <= n.position.x + ((n.style?.width as number) ?? 420) &&
+              position.y >= n.position.y &&
+              position.y <= n.position.y + ((n.style?.height as number) ?? 1000)
+          );
+
+          let nodePosition = position;
+          let parentId: string | undefined;
+          let extent: 'parent' | undefined;
+          let extraData: Partial<BuilderNodeData> = {};
+
+          if (groupUnderDrop) {
+            parentId = groupUnderDrop.id;
+            extent = 'parent';
+            nodePosition = {
+              x: position.x - groupUnderDrop.position.x,
+              y: position.y - groupUnderDrop.position.y,
+            };
+            const startInGroup = currentNodes.find(
+              (n) => n.parentId === groupUnderDrop.id && n.type === 'start'
+            );
+            if (startInGroup) {
+              extraData.requestName = (startInGroup.data as BuilderNodeData).requestName;
+            }
+          }
+
+          const newNode: Node = {
+            id: newId,
             type: 'customHook',
-            config: {
-              FunctionName: hookData.functionName,
-              ModuleName: hookData.moduleName,
-              Condition: hookData.condition || '',
-              code: hookData.code,
-            },
-            moduleName: hookData.moduleName,
-            condition: hookData.condition,
-            callFunction: true,
-            isEndpoint: false,
-          } satisfies BuilderNodeData,
-        };
-      } else if (type === 'start') {
+            position: nodePosition,
+            ...(parentId ? { parentId, extent } : {}),
+            data: {
+              label: hookData.hookName,
+              type: 'customHook',
+              config: {
+                FunctionName: hookData.functionName,
+                ModuleName: hookData.moduleName,
+                Condition: hookData.condition || '',
+                code: hookData.code,
+              },
+              moduleName: hookData.moduleName,
+              condition: hookData.condition,
+              callFunction: true,
+              isEndpoint: false,
+              ...extraData,
+            } satisfies BuilderNodeData,
+          };
+
+          return currentNodes.concat(newNode);
+        });
+
+        setMessage(null);
+        return;
+      }
+
+      if (type === 'start') {
+        // ── Start node + group + label ────────────────────────
         const defaultReqName = '/New/Request';
 
         setNodes((currentNodes) => {
-          // Find a unique request name by checking existing start nodes
           let uniqueReqName = defaultReqName;
           let counter = 1;
           const existingNames = new Set(
@@ -417,7 +443,6 @@ function WorkflowCanvas() {
               .filter((n) => n.type === 'start')
               .map((n) => (n.data as BuilderNodeData).requestName)
           );
-
           while (existingNames.has(uniqueReqName)) {
             uniqueReqName = `${defaultReqName} ${counter}`;
             counter++;
@@ -432,7 +457,7 @@ function WorkflowCanvas() {
             data: {},
             style: {
               width: 420,
-              height: 1000, // large enough; won't be visible
+              height: 1000,
               background: 'transparent',
               border: 'none',
               pointerEvents: 'none' as const,
@@ -454,7 +479,7 @@ function WorkflowCanvas() {
             parentId: groupId,
             extent: 'parent' as const,
             draggable: true,
-            selectable: false,
+            selectable: true,
             connectable: false,
           };
 
@@ -477,13 +502,47 @@ function WorkflowCanvas() {
 
         setMessage(null);
         return;
-      } else {
-        // Handle regular node
-        const definition = nodeDefinitionByType[type];
-        node = {
-          id: getNodeId(),
+      }
+
+      // ── Regular node (end, action types, etc.) ──────────────
+      const definition = nodeDefinitionByType[type];
+
+      setNodes((currentNodes) => {
+        const newId = getNodeId();
+        const groupUnderDrop = currentNodes.find(
+          (n) =>
+            n.type === 'group' &&
+            position.x >= n.position.x &&
+            position.x <= n.position.x + ((n.style?.width as number) ?? 420) &&
+            position.y >= n.position.y &&
+            position.y <= n.position.y + ((n.style?.height as number) ?? 1000)
+        );
+
+        let nodePosition = position;
+        let parentId: string | undefined;
+        let extent: 'parent' | undefined;
+        let extraData: Partial<BuilderNodeData> = {};
+
+        if (groupUnderDrop && type !== 'group' && type !== 'requestNameLabel') {
+          parentId = groupUnderDrop.id;
+          extent = 'parent';
+          nodePosition = {
+            x: position.x - groupUnderDrop.position.x,
+            y: position.y - groupUnderDrop.position.y,
+          };
+          const startInGroup = currentNodes.find(
+            (n) => n.parentId === groupUnderDrop.id && n.type === 'start'
+          );
+          if (startInGroup) {
+            extraData.requestName = (startInGroup.data as BuilderNodeData).requestName;
+          }
+        }
+
+        const newNode: Node = {
+          id: newId,
           type,
-          position,
+          position: nodePosition,
+          ...(parentId ? { parentId, extent } : {}),
           data: {
             label: definition?.label ?? type,
             color: definition?.color,
@@ -493,40 +552,18 @@ function WorkflowCanvas() {
             isEndpoint: definition?.defaultData?.isEndpoint,
             callFunction: true,
             description: definition?.description,
+            ...extraData,
           } satisfies BuilderNodeData,
         };
-      }
 
-      setNodes((currentNodes) => {
-        // Find if dropping over a group
-        const groupUnderDrop = currentNodes.find(n => 
-          n.type === 'group' && 
-          position.x >= n.position.x && 
-          position.x <= n.position.x + (n.style?.width as number ?? 420) &&
-          position.y >= n.position.y &&
-          position.y <= n.position.y + (n.style?.height as number ?? 1000)
-        );
-
-        if (groupUnderDrop && node.type !== 'group' && node.type !== 'requestNameLabel') {
-          node.parentId = groupUnderDrop.id;
-          node.extent = 'parent';
-          node.position = {
-            x: position.x - groupUnderDrop.position.x,
-            y: position.y - groupUnderDrop.position.y
-          };
-          // Inherit requestName from group's start node
-          const startInGroup = currentNodes.find(n => n.parentId === groupUnderDrop.id && n.type === 'start');
-          if (startInGroup) {
-            node.data = { ...node.data, requestName: (startInGroup.data as BuilderNodeData).requestName };
-          }
-        }
-
-        return currentNodes.concat(node);
+        return currentNodes.concat(newNode);
       });
+
       setMessage(null);
     },
     [screenToFlowPosition, setNodes, isExecuting]
   );
+
 
   const onSelectionChange = useCallback((params: OnSelectionChangeParams) => {
     setSelectedNodeId(params.nodes[0]?.id ?? null);
@@ -552,7 +589,7 @@ function WorkflowCanvas() {
 
         // If it's a workflow anchor (label or start), delete the whole workflow
         if (nodeToDelete?.type === 'requestNameLabel' || nodeToDelete?.type === 'start') {
-          const groupId = (nodeToDelete.data as BuilderNodeData)?.workflowGroupId;
+          const groupId = nodeToDelete.parentId || (nodeToDelete.data as BuilderNodeData)?.workflowGroupId;
           if (groupId) {
             idsToDelete.add(groupId);
             currentNodes.forEach((n) => {
@@ -594,13 +631,14 @@ function WorkflowCanvas() {
     (changes: NodeChange[]) => {
       const redirected: NodeChange[] = [];
       const groupOverrides = new Map<string, { x: number; y: number }>();
+      const additionalRemoves = new Set<string>();
 
       for (const change of changes) {
         if (change.type === 'position' && change.id) {
           const node = nodes.find((n) => n.id === change.id);
           // Redirect start-node or requestNameLabel drags to move the group
           if (node?.type === 'start' || node?.type === 'requestNameLabel') {
-            const groupId = (node.data as Record<string, unknown>)?.workflowGroupId as string | undefined;
+            const groupId = node.parentId || (node.data as Record<string, unknown>)?.workflowGroupId as string | undefined;
             if (groupId && change.position) {
               const groupNode = nodes.find((n) => n.id === groupId);
               if (groupNode) {
@@ -618,7 +656,34 @@ function WorkflowCanvas() {
             }
           }
         }
+        
+        if (change.type === 'remove' && change.id) {
+          const nodeToDelete = nodes.find((n) => n.id === change.id);
+          if (nodeToDelete?.type === 'requestNameLabel' || nodeToDelete?.type === 'start') {
+            const groupId = nodeToDelete.parentId || (nodeToDelete.data as BuilderNodeData)?.workflowGroupId;
+            if (groupId) {
+              additionalRemoves.add(groupId);
+              nodes.forEach((n) => {
+                if (
+                  n.parentId === groupId ||
+                  (n.data as BuilderNodeData)?.workflowGroupId === groupId
+                ) {
+                  additionalRemoves.add(n.id);
+                }
+              });
+            }
+          }
+        }
+
         redirected.push(change);
+      }
+
+      // Add cascaded removes
+      for (const id of additionalRemoves) {
+        // Prevent adding a duplicate remove if it's already in 'redirected'
+        if (!redirected.some((c) => c.type === 'remove' && c.id === id)) {
+          redirected.push({ type: 'remove', id });
+        }
       }
 
       // Apply group position overrides
@@ -847,31 +912,6 @@ function WorkflowCanvas() {
       <div className="builder-main">
         <div className="builder-toolbar">
           <div className="builder-toolbar-left">
-            <label>
-              Workflow Name
-              <input
-                value={workflowName}
-                onChange={(event) => setWorkflowName(event.target.value)}
-                className="toolbar-input"
-                placeholder="e.g., HO3 Rating Hook"
-                disabled={isLoading}
-              />
-            </label>
-            <button 
-              type="button" 
-              onClick={handleManualSave} 
-              disabled={isSaving || isLoading}
-              title="Save workflow" 
-              className="toolbar-save-btn"
-            >
-              <Save size={13} /> {isSaving ? 'Saving...' : 'Save'}
-            </button>
-            {lastSavedAt && (
-              <span className="toolbar-meta" title={`Last saved at ${lastSavedAt}`}>
-                Saved {lastSavedAt}
-              </span>
-            )}
-
             <label>
               Client Code
               <input
@@ -1122,7 +1162,23 @@ function WorkflowCanvas() {
         <div className="builder-workspace">
           <div className="builder-content">
             <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-              <div ref={reactFlowWrapper} className="canvas-wrap" style={{ flex: 1, minWidth: 0 }}>
+              <div ref={reactFlowWrapper} className="canvas-wrap" style={{ flex: 1, minWidth: 0, position: 'relative' }}>
+                {/* Floating Save Button */}
+                <div className="canvas-save-fab">
+                  <button
+                    type="button"
+                    className="canvas-save-btn"
+                    onClick={handleManualSave}
+                    disabled={isSaving || isLoading}
+                    title={lastSavedAt ? `Last saved at ${lastSavedAt}` : 'Save workflow'}
+                  >
+                    <Save size={13} />
+                    <span>{isSaving ? 'Saving…' : 'Save'}</span>
+                  </button>
+                  {lastSavedAt && (
+                    <span className="canvas-save-timestamp">Saved {lastSavedAt}</span>
+                  )}
+                </div>
                 <ReactFlow
                   nodes={displayNodes}
                   edges={displayEdges}

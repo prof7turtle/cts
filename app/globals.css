@@ -413,34 +413,6 @@ html, body {
   color: #78350f !important;
 }
 
-.toolbar-save-btn {
-  background: #10b981 !important;
-  color: #ffffff !important;
-  border-color: #059669 !important;
-}
-
-.toolbar-save-btn:hover {
-  background: #059669 !important;
-  border-color: #047857 !important;
-}
-
-.toolbar-save-btn:disabled {
-  background: #d1d5db !important;
-  border-color: #d1d5db !important;
-  cursor: not-allowed !important;
-}
-
-.toolbar-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: #64748b;
-  padding: 4px 8px;
-  background: #f1f5f9;
-  border-radius: 6px;
-  white-space: nowrap;
-}
 
 /* ── Start Node Config Panel ──────────────────────────────── */
 
@@ -821,21 +793,73 @@ html, body {
   left: 3px;
 }
 
+/* ── Canvas floating Save button ───────────────────────────── */
+.canvas-save-fab {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.canvas-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  background: #10b981;
+  color: #ffffff;
+  border: 1px solid #059669;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.30);
+}
+
+.canvas-save-btn:hover:not(:disabled) {
+  background: #059669;
+  border-color: #047857;
+  box-shadow: 0 3px 12px rgba(16, 185, 129, 0.40);
+}
+
+.canvas-save-btn:disabled {
+  background: #d1d5db;
+  border-color: #d1d5db;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.canvas-save-timestamp {
+  font-size: 11px;
+  color: #64748b;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  border-radius: 6px;
+  padding: 4px 9px;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+  pointer-events: none;
+}
+
+
+
+
+
+
 .canvas-wrap {
   flex: 1;
   min-height: 0;
   position: relative;
   overflow: hidden;
 }
-
-/* schema-panel styles moved to bottom — see .schema-sidebar */
-
-
-
-/* nodes-panel, library-search, category-title, node-item, node-icon-badge,
-   node-text, empty-library — all moved to bottom of file */
-
-
 
 .workflow-node {
   min-width: 190px;
@@ -2529,7 +2553,7 @@ html, body {
 }
 
 
-/* .ai-fab removed — replaced by toolbar-ai-btn */
+
 
 
 /* ══════════════════════════════════════════════════════════════
@@ -3287,6 +3311,3 @@ html, body {
   background: #ede9fe;
   border-color: #c4b5fd;
 }
-
-/* Remove old AI FAB (replaced by toolbar button) */
-.ai-fab { display: none !important; }
