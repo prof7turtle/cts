@@ -30,12 +30,12 @@ export async function deleteWorkflowFile(id: string) {
   return (await handleResponse(res));
 }
 
-export async function publishWorkflow(id: string) {
+export async function publishWorkflow(id: string): Promise<{ success: boolean; workflow?: { id: string; status: string; updatedAt: string }; errors?: string[] }> {
   // Best-effort: flag as published in-memory; file system doesn't track status yet.
   return { success: true, workflow: { id, status: 'PUBLISHED', updatedAt: new Date().toISOString() } };
 }
 
-export async function archiveWorkflow(id: string) {
+export async function archiveWorkflow(id: string): Promise<{ success: boolean; workflow?: { id: string; status: string; updatedAt: string }; errors?: string[] }> {
   return { success: true, workflow: { id, status: 'ARCHIVED', updatedAt: new Date().toISOString() } };
 }
 

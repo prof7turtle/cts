@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import WorkflowBuilder from './components/WorkflowBuilder';
 import WorkflowList from './components/WorkflowList';
 
-export default function HomePage() {
+function HomePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [view, setViewState] = useState<'list' | 'builder'>('list');
@@ -75,5 +75,13 @@ export default function HomePage() {
         {view === 'list' ? <WorkflowList /> : <WorkflowBuilder />}
       </main>
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<div className="app-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: '#94a3b8' }}>Loading...</div>}>
+      <HomePageContent />
+    </Suspense>
   );
 }
