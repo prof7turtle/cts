@@ -275,7 +275,7 @@ export default function WorkflowList() {
         setWorkflows(prev => prev.map(w => w.id === id ? { ...w, status: 'PUBLISHED' } : w));
         loadStats();
       } else {
-        setActionError(result.errors?.join(', ') || 'Failed to publish');
+        setActionError((result as any)?.errors?.join(', ') || 'Failed to publish');
       }
     } catch (err: any) { setActionError(err.message); }
   };
